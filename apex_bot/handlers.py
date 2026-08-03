@@ -49,7 +49,7 @@ waiting_converter: dict[int, str] = {}
 
 router = Router()
 
-BANNER = os.path.join(os.path.dirname(__file__), "провиль.jfif")
+BANNER = os.path.join(os.path.dirname(__file__), "5438570968302427672.jpg")
 BANNERS = {
     "support": os.path.join(os.path.dirname(__file__), "5379983559935860452.jpg"),
     "profile": os.path.join(os.path.dirname(__file__), "провиль.jfif"),
