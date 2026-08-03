@@ -49,12 +49,12 @@ waiting_converter: dict[int, str] = {}
 
 router = Router()
 
-BANNER = os.path.join(os.path.dirname(__file__), "5375564034293308188.jpg")
+BANNER = os.path.join(os.path.dirname(__file__), "провиль.jfif")
 BANNERS = {
     "support": os.path.join(os.path.dirname(__file__), "5379983559935860452.jpg"),
     "profile": os.path.join(os.path.dirname(__file__), "провиль.jfif"),
     "deposit": os.path.join(os.path.dirname(__file__), "пополнение.jfif"),
-    "dns_tokens": os.path.join(os.path.dirname(__file__), "5377731760122173406.jpg"),
+    "dns_tokens": os.path.join(os.path.dirname(__file__), "5442751204137048819.jpg"),
     "proxies": os.path.join(os.path.dirname(__file__), "баннер прокси.jfif"),
     "licenses": os.path.join(os.path.dirname(__file__), "лицензия.jfif"),
     "info": os.path.join(os.path.dirname(__file__), "информация.jfif"),
@@ -943,10 +943,12 @@ async def msg_text_handler(message: Message):
         return
 
     price = p["price"] * (100 - promo["discount_percent"]) // 100
+    user = get_user(message.from_user.id)
+    balance = user["balance"] if user else 0
     await message.answer(
         f"✅ <b>Промокод применён!</b> Скидка {promo['discount_percent']}%\n"
         f"Новая цена: <b>{price:,} ₽</b>",
-        reply_markup=payment_methods(pid, price),
+        reply_markup=payment_methods(pid, price, balance),
     )
 
 
