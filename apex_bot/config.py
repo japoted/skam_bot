@@ -26,6 +26,18 @@ PROXY = os.getenv("PROXY", "")  # например "http://user:pass@ip:port" и
 
 OFFER_URL = os.getenv("OFFER_URL", "")
 
+# ── NicePay ──
+NICEPAY_MERCHANT_ID = os.getenv("NICEPAY_MERCHANT_ID", "")
+NICEPAY_SECRET = os.getenv("NICEPAY_SECRET", "")
+NICEPAY_API_URL = os.getenv("NICEPAY_API_URL", "https://nicepay.io/public/api/payment")
+NICEPAY_CURRENCY = os.getenv("NICEPAY_CURRENCY", "RUB")
+# публичный URL куда NicePay будет слать webhook, например https://example.com/nicepay/callback
+NICEPAY_CALLBACK_URL = os.getenv("NICEPAY_CALLBACK_URL", "")
+# порт для локального webhook-сервера (aiohttp)
+NICEPAY_WEBHOOK_PORT = int(os.getenv("NICEPAY_WEBHOOK_PORT", "8080"))
+NICEPAY_WEBHOOK_PATH = os.getenv("NICEPAY_WEBHOOK_PATH", "/nicepay/callback")
+
+# ── Legacy / другие методы ──
 CARD_NUMBER = os.getenv("CARD_NUMBER", "")
 CARD_HOLDER = os.getenv("CARD_HOLDER", "")
 BANK_NAME = os.getenv("BANK_NAME", "")

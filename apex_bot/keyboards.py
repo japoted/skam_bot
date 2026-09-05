@@ -77,7 +77,7 @@ def payment_methods(product_id: str, price: int | None = None, balance: int = 0)
     p = config.PRODUCTS[product_id]
     final_price = price if price is not None else p["price"]
     builder.row(
-        InlineKeyboardButton(text="💳 Банковская карта", callback_data=f"pay_card_{product_id}_{final_price}"),
+        InlineKeyboardButton(text="💳 NicePay (СБП / Карта)", callback_data=f"pay_card_{product_id}_{final_price}"),
     )
     builder.row(
         InlineKeyboardButton(text="💎 Криптовалюта (кошелёк)", callback_data=f"pay_wallet_{product_id}_{final_price}"),
@@ -114,7 +114,7 @@ def deposit_amounts() -> InlineKeyboardMarkup:
 
 def deposit_payment_methods(amount: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="💳 Банковская карта", callback_data=f"dep_pay_card_{amount}"))
+    builder.row(InlineKeyboardButton(text="💳 NicePay (СБП / Карта)", callback_data=f"dep_pay_card_{amount}"))
     builder.row(InlineKeyboardButton(text="💎 Криптовалюта (кошелёк)", callback_data=f"dep_pay_wallet_{amount}"))
     builder.row(InlineKeyboardButton(text="⭐ Звёзды Telegram", callback_data=f"dep_pay_stars_{amount}"))
     builder.row(InlineKeyboardButton(text="❌ Отмена", callback_data="deposit"))
