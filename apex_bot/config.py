@@ -37,11 +37,6 @@ NICEPAY_CALLBACK_URL = os.getenv("NICEPAY_CALLBACK_URL", "")
 NICEPAY_WEBHOOK_PORT = int(os.getenv("NICEPAY_WEBHOOK_PORT", "8080"))
 NICEPAY_WEBHOOK_PATH = os.getenv("NICEPAY_WEBHOOK_PATH", "/nicepay/callback")
 
-# ── Legacy / другие методы ──
-CARD_NUMBER = os.getenv("CARD_NUMBER", "")
-CARD_HOLDER = os.getenv("CARD_HOLDER", "")
-BANK_NAME = os.getenv("BANK_NAME", "")
-PHONE_NUMBER = os.getenv("PHONE_NUMBER", "")
 CRYPTO_WALLET = os.getenv("CRYPTO_WALLET", "")
 
 CATEGORIES = {

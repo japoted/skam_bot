@@ -25,7 +25,7 @@ def _ce(eid: str, fallback: str = "⭐") -> str:
     return f'<tg-emoji emoji-id="{eid}">{fallback}</tg-emoji>'
 
 import config
-from config import ADMIN_IDS, PRODUCTS, CARD_NUMBER, CARD_HOLDER, BANK_NAME, PHONE_NUMBER, CRYPTO_WALLET, OFFER_URL
+from config import ADMIN_IDS, PRODUCTS, CRYPTO_WALLET, OFFER_URL
 from database import (
     register_user, get_user, get_user_orders, get_order_stats,
     create_order, get_pending_orders, confirm_order, reject_order,
