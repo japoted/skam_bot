@@ -796,13 +796,22 @@ async def cb_admin_orders(callback: CallbackQuery):
 async def cb_admin_confirm_photo(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         return
-    user_id = int(callback.data[20:])
-    orders = get_pending_orders()
-    user_orders = [o for o in orders if o["user_id"] == user_id]
-    if not user_orders:
-        await callback.answer("Нет заявок от этого пользователя", show_alert=True)
-        return
-    target = max(user_orders, key=lambda o: o["id"])
+    parts = callback.data[len("admin_confirm_photo_"):].split("_")
+    user_id = int(parts[0])
+    embedded_order_id = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+    if embedded_order_id:
+        target = get_order(embedded_order_id)
+        if not target or target["user_id"] != user_id or target["status"] != "pending":
+            embedded_order_id = None
+    if not embedded_order_id:
+        orders = get_pending_orders()
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+        if not user_orders:
+            user_orders = [o for o in orders if o["user_id"] == user_id]
+        if not user_orders:
+            await callback.answer("Нет заявок от этого пользователя", show_alert=True)
+            return
+        target = max(user_orders, key=lambda o: o["id"])
     order_id = target["id"]
     confirm_order(order_id)
     if target["product_id"] == "deposit":
@@ -842,13 +851,22 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
 async def cb_admin_reject_photo(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         return
-    user_id = int(callback.data[19:])
-    orders = get_pending_orders()
-    user_orders = [o for o in orders if o["user_id"] == user_id]
-    if not user_orders:
-        await callback.answer("Нет заявок от этого пользователя", show_alert=True)
-        return
-    target = max(user_orders, key=lambda o: o["id"])
+    parts = callback.data[len("admin_reject_photo_"):].split("_")
+    user_id = int(parts[0])
+    embedded_order_id = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else None
+    if embedded_order_id:
+        target = get_order(embedded_order_id)
+        if not target or target["user_id"] != user_id or target["status"] != "pending":
+            embedded_order_id = None
+    if not embedded_order_id:
+        orders = get_pending_orders()
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+        if not user_orders:
+            user_orders = [o for o in orders if o["user_id"] == user_id]
+        if not user_orders:
+            await callback.answer("Нет заявок от этого пользователя", show_alert=True)
+            return
+        target = max(user_orders, key=lambda o: o["id"])
     reject_order(target["id"])
     msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @richhelper1 по вопросам."
     try:
@@ -1158,15 +1176,31 @@ async def handle_photo(message: Message):
     await message.answer(
         "📸 Скриншот получен. Ожидайте подтверждения администратором."
     )
+    user_id = message.from_user.id
+    pending = get_pending_orders()
+    user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+    order_info = ""
+    order_id_str = ""
+    if user_pending:
+        target = max(user_pending, key=lambda o: o["id"])
+        order_id_str = f"_{target['id']}"
+        order_info = (
+            f"\n\n📦 <b>Заказ #{target['id']}</b>\n"
+            f"├ Товар: {target['product_name']}\n"
+            f"├ Сумма: {target['price']:,} ₽\n"
+            f"├ Способ: {target['payment_method']}\n"
+            f"└ Создан: {target['created_at']}"
+        )
     caption = (
         f"📸 <b>Скриншот оплаты от пользователя</b>\n"
-        f"👤 ID: <code>{message.from_user.id}</code>\n"
+        f"👤 ID: <code>{user_id}</code>\n"
         f"├ Юзернейм: @{message.from_user.username or '—'}\n"
         f"└ Имя: {message.from_user.first_name or '—'}"
+        f"{order_info}"
     )
     builder = InlineKeyboardBuilder()
-    builder.button(text="✅ Да, подтвердить", callback_data=f"admin_confirm_photo_{message.from_user.id}")
-    builder.button(text="❌ Нет, отклонить", callback_data=f"admin_reject_photo_{message.from_user.id}")
+    builder.button(text="✅ Да, подтвердить", callback_data=f"admin_confirm_photo_{user_id}{order_id_str}")
+    builder.button(text="❌ Нет, отклонить", callback_data=f"admin_reject_photo_{user_id}{order_id_str}")
     builder.adjust(2)
     for admin_id in ADMIN_IDS:
         try:
