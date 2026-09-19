@@ -34,7 +34,7 @@ from database import (
     get_all_users, add_balance, claim_order, get_order,
     get_token_meta, apply_converter,
 )
-from nicepay import create_nicepay_payment
+from nicepay import create_nicepay_payment, check_nicepay_payment, is_nicepay_success
 from keyboards import (
     main_menu, bottom_menu, catalog_menu, category_products,
     product_actions, quantity_selector, payment_methods,
@@ -571,15 +571,76 @@ async def cb_check_nicepay(callback: CallbackQuery):
                 f"💵 Сумма: <b>{order['price']:,} ₽</b>\n\n"
                 f"<b>Ваши токены:</b>\n{lines_txt}"
             )
-            await callback.message.edit_text(text)
+            try:
+                await callback.message.edit_text(text)
+            except:
+                pass
             await callback.answer("Оплата подтверждена!", show_alert=True)
             return
         else:
-            # депозит или товар без токена — уже подтвержден
             if order["product_id"] == "deposit":
                 await callback.answer("✅ Баланс пополнен!", show_alert=True)
-                await callback.message.edit_text(f"✅ <b>Баланс пополнен!</b>\n\n💵 Сумма: <b>{order['price']:,} ₽</b>")
+                try:
+                    await callback.message.edit_text(f"✅ <b>Баланс пополнен!</b>\n\n💵 Сумма: <b>{order['price']:,} ₽</b>")
+                except:
+                    pass
             else:
+                builder = InlineKeyboardBuilder()
+                builder.button(text="🎁 Получить заказ", callback_data=f"claim_{order_id}")
+                builder.button(text="🏠 Главное меню", callback_data="main_menu")
+                builder.adjust(1)
+                try:
+                    await callback.message.edit_text(
+                        f"✅ <b>Заказ #{order_id} оплачен!</b>\n\nНажмите чтобы получить товар:",
+                        reply_markup=builder.as_markup(),
+                    )
+                except:
+                    pass
+                await callback.answer("Оплата подтверждена!", show_alert=True)
+            return
+    if order["status"] == "rejected":
+        await callback.answer("❌ Заказ отклонён", show_alert=True)
+        return
+
+    await callback.answer("⏳ Проверяю оплату в NicePay...", show_alert=False)
+    result = await check_nicepay_payment(order_id)
+    if is_nicepay_success(result):
+        confirm_order(order_id)
+        user_id = order["user_id"]
+        if order["product_id"] == "deposit":
+            add_balance(user_id, order["price"])
+            msg = (
+                f"💰 <b>Баланс пополнен!</b>\n\n"
+                f"📄 Платёж №<b>{order_id}</b>\n"
+                f"💵 Сумма: <b>{order['price']:,} ₽</b>\n\n"
+                f"Оплачено через NicePay ✅"
+            )
+            try:
+                await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
+            except:
+                pass
+            await callback.answer("✅ Баланс пополнен!", show_alert=True)
+            try:
+                await callback.message.edit_text(f"✅ <b>Баланс пополнен!</b>\n\n💵 Сумма: <b>{order['price']:,} ₽</b>")
+            except:
+                pass
+        else:
+            tokens = claim_order(order_id)
+            if tokens:
+                lines = "\n".join(f"<code>{m['token']}</code>" for m in tokens)
+                msg = (
+                    f"✅ <b>Заказ #{order_id} оплачен!</b>\n\n"
+                    f"🛒 Товар: <b>{order['product_name']}</b>\n"
+                    f"💵 Сумма: <b>{order['price']:,} ₽</b>\n\n"
+                    f"<b>Ваши токены:</b>\n{lines}\n\n"
+                    f"Сохраните их, они понадобятся для активации товара."
+                )
+                try:
+                    await callback.bot.send_message(user_id, msg)
+                except:
+                    pass
+            await callback.answer("✅ Оплата подтверждена!", show_alert=True)
+            try:
                 builder = InlineKeyboardBuilder()
                 builder.button(text="🎁 Получить заказ", callback_data=f"claim_{order_id}")
                 builder.button(text="🏠 Главное меню", callback_data="main_menu")
@@ -588,12 +649,21 @@ async def cb_check_nicepay(callback: CallbackQuery):
                     f"✅ <b>Заказ #{order_id} оплачен!</b>\n\nНажмите чтобы получить товар:",
                     reply_markup=builder.as_markup(),
                 )
-                await callback.answer("Оплата подтверждена!", show_alert=True)
-            return
-    if order["status"] == "rejected":
-        await callback.answer("❌ Заказ отклонён", show_alert=True)
-        return
-    await callback.answer("⏳ Оплата ещё не подтверждена. Подождите webhook или попробуйте позже.", show_alert=True)
+            except:
+                pass
+        for adm in ADMIN_IDS:
+            try:
+                await callback.bot.send_message(
+                    adm,
+                    f"✅ NicePay (ручная проверка): Заказ #{order_id} оплачен\n"
+                    f"👤 Пользователь: <code>{user_id}</code>\n"
+                    f"🛒 Товар: {order['product_name']}\n"
+                    f"💵 Сумма: {order['price']:,} ₽",
+                )
+            except:
+                pass
+    else:
+        await callback.answer("❌ Оплата ещё не поступила. Попробуйте через минуту.", show_alert=True)
 
 
 @router.pre_checkout_query()

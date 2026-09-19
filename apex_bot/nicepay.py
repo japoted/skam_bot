@@ -91,6 +91,34 @@ async def create_nicepay_payment(
         return {"status": "error", "data": {"message": str(e)}}
 
 
+async def check_nicepay_payment(order_id: int | str) -> dict:
+    """
+    Проверяет статус платежа в NicePay через API.
+    NicePay.io может поддерживать GET /public/api/payment/{order_id} или аналогичный эндпоинт.
+    """
+    api_base = NICEPAY_API_URL.rsplit("/", 1)[0] if "/" in NICEPAY_API_URL else NICEPAY_API_URL
+    check_url = f"{api_base}/{order_id}"
+
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.get(
+                check_url,
+                params={"merchant_id": NICEPAY_MERCHANT_ID, "secret": NICEPAY_SECRET},
+                headers={"Accept": "application/json"},
+            ) as resp:
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    logger.warning(f"NicePay check status non-JSON {resp.status}: {text[:300]}")
+                    return {"status": "error", "data": {"message": f"HTTP {resp.status}"}}
+                logger.info(f"NicePay check status {resp.status}: {data}")
+                return data
+    except Exception as e:
+        logger.exception(f"NicePay check status failed: {e}")
+        return {"status": "error", "data": {"message": str(e)}}
+
+
 def extract_nicepay_order_id(payload: dict) -> Optional[str]:
     """
     Пытается вытащить order_id из webhook payload разными вариантами.
