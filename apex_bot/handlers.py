@@ -835,7 +835,7 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
                 await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
             except:
                 pass
-    pending_left = [o for o in user_orders if o["id"] != order_id]
+    pending_left = [o for o in get_pending_orders() if o["user_id"] == user_id and o["id"] != order_id]
     info = f"\n\n✅ Подтверждён заказ #{order_id}"
     if pending_left:
         info += f"\n⏳ Осталось pending: {len(pending_left)} шт."
