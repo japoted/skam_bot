@@ -48,16 +48,32 @@ async def nicepay_webhook_handler(request: web.Request):
 
         order_id_str = extract_nicepay_order_id(payload)
         if not order_id_str:
-            # попытка из query
             order_id_str = request.query.get("order_id") or request.query.get("orderId")
         if not order_id_str:
-            logger.warning("NicePay webhook: order_id not found")
+            logger.warning(f"NicePay webhook: order_id not found. Payload keys: {list(payload.keys()) if isinstance(payload, dict) else type(payload)}")
             return web.json_response({"status": "error", "message": "order_id not found"}, status=400)
 
-        try:
-            order_id = int(str(order_id_str).split("-")[0].strip())
-        except Exception:
-            logger.warning(f"NicePay webhook invalid order_id: {order_id_str}")
+        order_id = None
+        if str(order_id_str).isdigit():
+            order_id = int(order_id_str)
+        else:
+            for nested_key in ("data", "payment", "result", "payload", "metadata", "extra"):
+                if isinstance(payload, dict) and nested_key in payload and isinstance(payload[nested_key], dict):
+                    inner = payload[nested_key]
+                    for k in ("order_id", "orderId", "id"):
+                        if k in inner and str(inner[k]).isdigit():
+                            order_id = int(inner[k])
+                            break
+                if order_id:
+                    break
+            if not order_id:
+                for k in ("order_id", "orderId"):
+                    v = request.query.get(k)
+                    if v and str(v).isdigit():
+                        order_id = int(v)
+                        break
+        if not order_id:
+            logger.warning(f"NicePay webhook: could not extract numeric order_id. order_id_str={order_id_str} payload_keys={list(payload.keys()) if isinstance(payload, dict) else 'N/A'}")
             return web.json_response({"status": "error", "message": "invalid order_id"}, status=400)
 
         order = get_order(order_id)

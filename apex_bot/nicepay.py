@@ -19,12 +19,13 @@ import aiohttp
 import os
 # Совместимость со старым config.py на хосте
 try:
-    from config import NICEPAY_MERCHANT_ID, NICEPAY_SECRET, NICEPAY_API_URL, NICEPAY_CURRENCY
+    from config import NICEPAY_MERCHANT_ID, NICEPAY_SECRET, NICEPAY_API_URL, NICEPAY_CURRENCY, NICEPAY_CALLBACK_URL
 except ImportError:
     NICEPAY_MERCHANT_ID = os.getenv("NICEPAY_MERCHANT_ID", "")
     NICEPAY_SECRET = os.getenv("NICEPAY_SECRET", "")
     NICEPAY_API_URL = os.getenv("NICEPAY_API_URL", "https://nicepay.io/public/api/payment")
     NICEPAY_CURRENCY = os.getenv("NICEPAY_CURRENCY", "RUB")
+    NICEPAY_CALLBACK_URL = os.getenv("NICEPAY_CALLBACK_URL", "")
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,10 @@ async def create_nicepay_payment(
         "currency": cur,
     }
 
-    logger.info(f"NicePay create payment: order_id={order_id} amount={amount} {cur} -> {nicepay_amount} minor units customer={customer}")
+    if NICEPAY_CALLBACK_URL:
+        payload["callback_url"] = NICEPAY_CALLBACK_URL
+
+    logger.info(f"NicePay create payment: order_id={order_id} amount={amount} {cur} -> {nicepay_amount} minor units customer={customer} callback_url={NICEPAY_CALLBACK_URL}")
 
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:

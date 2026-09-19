@@ -64,15 +64,21 @@ BANNERS = {
 
 
 async def _nav(callback: CallbackQuery, text: str, reply_markup, answer_text="", show_alert=False):
-    if callback.message.caption is not None:
-        await callback.message.delete()
-        await callback.message.answer(text, reply_markup=reply_markup)
-    else:
-        await callback.message.edit_text(text, reply_markup=reply_markup)
-    if show_alert:
-        await callback.answer(answer_text, show_alert=True)
-    else:
-        await callback.answer()
+    try:
+        if callback.message.caption is not None:
+            await callback.message.delete()
+            await callback.message.answer(text, reply_markup=reply_markup)
+        else:
+            await callback.message.edit_text(text, reply_markup=reply_markup)
+    except Exception:
+        pass
+    try:
+        if show_alert:
+            await callback.answer(answer_text, show_alert=True)
+        else:
+            await callback.answer()
+    except Exception:
+        pass
 
 
 async def _send_with_banner(target: Message, banner_key: str, text: str, reply_markup=None):
@@ -652,6 +658,9 @@ async def cb_profile(callback: CallbackQuery):
     user_id = callback.from_user.id
     user = get_user(user_id)
     cnt, total = get_order_stats(user_id)
+    all_orders = get_user_orders(user_id)
+    pending = [o for o in all_orders if o["status"] == "pending"]
+    confirmed = [o for o in all_orders if o["status"] == "confirmed"]
 
     registered = user["registered_at"][:10] if user else "—"
 
@@ -668,6 +677,14 @@ async def cb_profile(callback: CallbackQuery):
         f"├ Количество заказов: {cnt}\n"
         f"└ Общая сумма покупок: {total:,} ₽"
     )
+    if pending:
+        text += "\n\n⏳ <b>Ожидают оплаты:</b>\n"
+        for o in pending[-5:]:
+            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
+    if confirmed:
+        text += "\n\n✅ <b>Последние заказы:</b>\n"
+        for o in confirmed[-5:]:
+            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
     builder = InlineKeyboardBuilder()
     builder.button(text="🏠 Главное меню", callback_data="main_menu")
     await _nav(callback, text, builder.as_markup())
@@ -676,7 +693,10 @@ async def cb_profile(callback: CallbackQuery):
 @router.callback_query(F.data == "admin_orders")
 async def cb_admin_orders(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
-        await callback.answer("Нет доступа", show_alert=True)
+        try:
+            await callback.answer("Нет доступа", show_alert=True)
+        except Exception:
+            pass
         return
 
     pending = get_pending_orders()
@@ -696,7 +716,10 @@ async def cb_admin_orders(callback: CallbackQuery):
         )
         await callback.message.answer(text, reply_markup=admin_order_actions(order["id"]))
 
-    await callback.answer()
+    try:
+        await callback.answer()
+    except Exception:
+        pass
 
 
 @router.callback_query(F.data.startswith("admin_confirm_"))
@@ -779,19 +802,16 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
         return
     user_id = int(callback.data[20:])
     orders = get_pending_orders()
-    target = None
-    for o in orders:
-        if o["user_id"] == user_id:
-            target = o
-            break
-    if not target:
+    user_orders = [o for o in orders if o["user_id"] == user_id]
+    if not user_orders:
         await callback.answer("Нет заявок от этого пользователя", show_alert=True)
         return
+    target = max(user_orders, key=lambda o: o["id"])
     order_id = target["id"]
     confirm_order(order_id)
     if target["product_id"] == "deposit":
         add_balance(user_id, target["price"])
-        msg = f"💰 <b>Баланс пополнен!</b>\n\n💵 Сумма: <b>{target['price']:,} ₽</b>"
+        msg = f"💰 <b>Баланс пополнен!</b>\n\n📄 Платёж №<b>{order_id}</b>\n💵 Сумма: <b>{target['price']:,} ₽</b>"
         try:
             await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
         except:
@@ -810,8 +830,15 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
                 await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
             except:
                 pass
-    text = callback.message.html_text + "\n\n✅ <b>Подтверждено</b>"
-    await callback.message.edit_caption(caption=text, reply_markup=None)
+    pending_left = [o for o in user_orders if o["id"] != order_id]
+    info = f"\n\n✅ Подтверждён заказ #{order_id}"
+    if pending_left:
+        info += f"\n⏳ Осталось pending: {len(pending_left)} шт."
+    text = callback.message.html_text + info
+    try:
+        await callback.message.edit_caption(caption=text, reply_markup=None)
+    except:
+        pass
     await callback.answer("Заказ подтверждён", show_alert=True)
 
 
@@ -821,14 +848,11 @@ async def cb_admin_reject_photo(callback: CallbackQuery):
         return
     user_id = int(callback.data[18:])
     orders = get_pending_orders()
-    target = None
-    for o in orders:
-        if o["user_id"] == user_id:
-            target = o
-            break
-    if not target:
+    user_orders = [o for o in orders if o["user_id"] == user_id]
+    if not user_orders:
         await callback.answer("Нет заявок от этого пользователя", show_alert=True)
         return
+    target = max(user_orders, key=lambda o: o["id"])
     reject_order(target["id"])
     msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @richhelper1 по вопросам."
     try:
@@ -851,6 +875,9 @@ async def menu_profile(message: Message):
     user_id = message.from_user.id
     user = get_user(user_id)
     cnt, total = get_order_stats(user_id)
+    all_orders = get_user_orders(user_id)
+    pending = [o for o in all_orders if o["status"] == "pending"]
+    confirmed = [o for o in all_orders if o["status"] == "confirmed"]
 
     registered = user["registered_at"][:10] if user else "—"
 
@@ -867,6 +894,14 @@ async def menu_profile(message: Message):
         f"├ Количество заказов: {cnt}\n"
         f"└ Общая сумма покупок: {total:,} ₽"
     )
+    if pending:
+        text += "\n\n⏳ <b>Ожидают оплаты:</b>\n"
+        for o in pending[-5:]:
+            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
+    if confirmed:
+        text += "\n\n✅ <b>Последние заказы:</b>\n"
+        for o in confirmed[-5:]:
+            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
     builder = InlineKeyboardBuilder()
     builder.button(text="🏠 Главное меню", callback_data="main_menu")
     await _send_with_banner(message, "profile", text, builder.as_markup())
