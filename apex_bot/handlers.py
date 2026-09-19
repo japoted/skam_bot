@@ -722,6 +722,77 @@ async def cb_admin_orders(callback: CallbackQuery):
         pass
 
 
+@router.callback_query(F.data.startswith("admin_confirm_photo_"))
+async def cb_admin_confirm_photo(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        return
+    user_id = int(callback.data[20:])
+    orders = get_pending_orders()
+    user_orders = [o for o in orders if o["user_id"] == user_id]
+    if not user_orders:
+        await callback.answer("Нет заявок от этого пользователя", show_alert=True)
+        return
+    target = max(user_orders, key=lambda o: o["id"])
+    order_id = target["id"]
+    confirm_order(order_id)
+    if target["product_id"] == "deposit":
+        add_balance(user_id, target["price"])
+        msg = f"💰 <b>Баланс пополнен!</b>\n\n📄 Платёж №<b>{order_id}</b>\n💵 Сумма: <b>{target['price']:,} ₽</b>"
+        try:
+            await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
+        except:
+            pass
+    else:
+        tokens = claim_order(order_id)
+        if tokens:
+            lines = "\n".join(f"<code>{m['token']}</code>" for m in tokens)
+            msg = (
+                f"✅ <b>Заказ #{order_id} подтверждён!</b>\n\n"
+                f"🛒 Товар: <b>{target['product_name']}</b>\n"
+                f"💵 Сумма: <b>{target['price']:,} ₽</b>\n\n"
+                f"<b>Ваши токены:</b>\n{lines}"
+            )
+            try:
+                await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
+            except:
+                pass
+    pending_left = [o for o in user_orders if o["id"] != order_id]
+    info = f"\n\n✅ Подтверждён заказ #{order_id}"
+    if pending_left:
+        info += f"\n⏳ Осталось pending: {len(pending_left)} шт."
+    text = callback.message.html_text + info
+    try:
+        await callback.message.edit_caption(caption=text, reply_markup=None)
+    except:
+        pass
+    await callback.answer("Заказ подтверждён", show_alert=True)
+
+
+@router.callback_query(F.data.startswith("admin_reject_photo_"))
+async def cb_admin_reject_photo(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        return
+    user_id = int(callback.data[18:])
+    orders = get_pending_orders()
+    user_orders = [o for o in orders if o["user_id"] == user_id]
+    if not user_orders:
+        await callback.answer("Нет заявок от этого пользователя", show_alert=True)
+        return
+    target = max(user_orders, key=lambda o: o["id"])
+    reject_order(target["id"])
+    msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @richhelper1 по вопросам."
+    try:
+        await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
+    except:
+        pass
+    text = callback.message.html_text + "\n\n❌ <b>Отклонено</b>"
+    try:
+        await callback.message.edit_caption(caption=text, reply_markup=None)
+    except:
+        pass
+    await callback.answer("Заказ отклонён", show_alert=True)
+
+
 @router.callback_query(F.data.startswith("admin_confirm_"))
 async def cb_admin_confirm(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
@@ -794,74 +865,6 @@ async def cb_admin_reject(callback: CallbackQuery):
     reject_order(order_id)
     text = callback.message.html_text + "\n\n❌ <b>Отклонено</b>"
     await _nav(callback, text, None, answer_text="Заказ отклонён", show_alert=True)
-
-
-@router.callback_query(F.data.startswith("admin_confirm_photo_"))
-async def cb_admin_confirm_photo(callback: CallbackQuery):
-    if callback.from_user.id not in ADMIN_IDS:
-        return
-    user_id = int(callback.data[20:])
-    orders = get_pending_orders()
-    user_orders = [o for o in orders if o["user_id"] == user_id]
-    if not user_orders:
-        await callback.answer("Нет заявок от этого пользователя", show_alert=True)
-        return
-    target = max(user_orders, key=lambda o: o["id"])
-    order_id = target["id"]
-    confirm_order(order_id)
-    if target["product_id"] == "deposit":
-        add_balance(user_id, target["price"])
-        msg = f"💰 <b>Баланс пополнен!</b>\n\n📄 Платёж №<b>{order_id}</b>\n💵 Сумма: <b>{target['price']:,} ₽</b>"
-        try:
-            await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
-        except:
-            pass
-    else:
-        tokens = claim_order(order_id)
-        if tokens:
-            lines = "\n".join(f"<code>{m['token']}</code>" for m in tokens)
-            msg = (
-                f"✅ <b>Заказ #{order_id} подтверждён!</b>\n\n"
-                f"🛒 Товар: <b>{target['product_name']}</b>\n"
-                f"💵 Сумма: <b>{target['price']:,} ₽</b>\n\n"
-                f"<b>Ваши токены:</b>\n{lines}"
-            )
-            try:
-                await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
-            except:
-                pass
-    pending_left = [o for o in user_orders if o["id"] != order_id]
-    info = f"\n\n✅ Подтверждён заказ #{order_id}"
-    if pending_left:
-        info += f"\n⏳ Осталось pending: {len(pending_left)} шт."
-    text = callback.message.html_text + info
-    try:
-        await callback.message.edit_caption(caption=text, reply_markup=None)
-    except:
-        pass
-    await callback.answer("Заказ подтверждён", show_alert=True)
-
-
-@router.callback_query(F.data.startswith("admin_reject_photo_"))
-async def cb_admin_reject_photo(callback: CallbackQuery):
-    if callback.from_user.id not in ADMIN_IDS:
-        return
-    user_id = int(callback.data[18:])
-    orders = get_pending_orders()
-    user_orders = [o for o in orders if o["user_id"] == user_id]
-    if not user_orders:
-        await callback.answer("Нет заявок от этого пользователя", show_alert=True)
-        return
-    target = max(user_orders, key=lambda o: o["id"])
-    reject_order(target["id"])
-    msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @richhelper1 по вопросам."
-    try:
-        await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
-    except:
-        pass
-    text = callback.message.html_text + "\n\n❌ <b>Отклонено</b>"
-    await callback.message.edit_caption(caption=text, reply_markup=None)
-    await callback.answer("Заказ отклонён", show_alert=True)
 
 
 @router.message(F.text == "📁 Каталог товаров")
