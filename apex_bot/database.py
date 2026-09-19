@@ -92,12 +92,18 @@ def get_all_users() -> list[dict]:
         return [dict(r) for r in rows]
 
 
-def add_balance(user_id: int, amount: int):
+def add_balance(user_id: int, amount: int) -> int:
     with get_db() as db:
+        db.execute(
+            "INSERT OR IGNORE INTO users (user_id) VALUES (?)",
+            (user_id,),
+        )
         db.execute(
             "UPDATE users SET balance = balance + ? WHERE user_id = ?",
             (amount, user_id),
         )
+        row = db.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,)).fetchone()
+        return row["balance"] if row else 0
 
 
 def get_user(user_id: int) -> dict | None:

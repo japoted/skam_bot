@@ -1,4 +1,5 @@
 import os
+import logging
 
 from aiogram import Router, F
 from aiogram.filters import CommandStart, Command
@@ -24,6 +25,8 @@ CUSTOM_EMOJI = [
 def _ce(eid: str, fallback: str = "⭐") -> str:
     return f'<tg-emoji emoji-id="{eid}">{fallback}</tg-emoji>'
 
+pending_crypto_order: dict[int, int] = {}
+
 import config
 from config import ADMIN_IDS, PRODUCTS, CRYPTO_WALLET, OFFER_URL
 from database import (
@@ -45,6 +48,8 @@ from keyboards import (
 
 waiting_promo: dict[int, str] = {}
 waiting_deposit: dict[int, bool] = {}
+
+logger = logging.getLogger(__name__)
 pending_quantity: dict[int, int] = {}
 waiting_converter: dict[int, str] = {}
 
@@ -446,6 +451,7 @@ async def cb_pay_wallet(callback: CallbackQuery):
 
     qty = pending_quantity.pop(callback.from_user.id, 1)
     order_id = create_order(callback.from_user.id, pid, p["name"], price, "wallet", qty)
+    pending_crypto_order[callback.from_user.id] = order_id
 
     text = (
         f"💎 <b>Оплата криптовалютой (кошелёк)</b>\n\n"
@@ -521,7 +527,8 @@ async def cb_dep_pay_card(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("dep_pay_wallet_"))
 async def cb_dep_pay_wallet(callback: CallbackQuery):
     amount = int(callback.data.split("_")[-1])
-    create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "wallet")
+    order_id = create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "wallet")
+    pending_crypto_order[callback.from_user.id] = order_id
     text = (
         f"💎 <b>Оплата криптовалютой (кошелёк)</b>\n\n"
         f"📄 Платёж №<b>{callback.from_user.id}-{amount}</b>\n"
@@ -814,8 +821,10 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
         target = max(user_orders, key=lambda o: o["id"])
     order_id = target["id"]
     confirm_order(order_id)
+    logger.info(f"CONFIRM PHOTO: order_id={order_id} user_id={user_id} product_id={target['product_id']} price={target['price']} payment={target['payment_method']} status={target['status']}")
     if target["product_id"] == "deposit":
-        add_balance(user_id, target["price"])
+        new_balance = add_balance(user_id, target["price"])
+        logger.info(f"ADD BALANCE: user_id={user_id} amount={target['price']} new_balance={new_balance}")
         msg = f"💰 <b>Баланс пополнен!</b>\n\n📄 Платёж №<b>{order_id}</b>\n💵 Сумма: <b>{target['price']:,} ₽</b>"
         try:
             await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
@@ -887,14 +896,17 @@ async def cb_admin_confirm(callback: CallbackQuery):
         return
     order_id = int(callback.data[14:])
     confirm_order(order_id)
+    logger.info(f"CONFIRM PANEL: order_id={order_id}")
     text = callback.message.html_text + "\n\n✅ <b>Подтверждено</b>"
     await _nav(callback, text, None, answer_text="Заказ подтверждён", show_alert=True)
 
     user_id = get_order_user_id(order_id)
     if user_id:
         order = get_order(order_id)
+        logger.info(f"CONFIRM PANEL: user_id={user_id} product_id={order['product_id'] if order else 'NONE'} price={order['price'] if order else 0}")
         if order and order["product_id"] == "deposit":
-            add_balance(user_id, order["price"])
+            new_balance = add_balance(user_id, order["price"])
+            logger.info(f"CONFIRM PANEL ADD BALANCE: user_id={user_id} amount={order['price']} new_balance={new_balance}")
             msg = (
                 f"💰 <b>Баланс пополнен!</b>\n\n"
                 f"📄 Платёж №<b>{order_id}</b>\n"
@@ -1177,20 +1189,33 @@ async def handle_photo(message: Message):
         "📸 Скриншот получен. Ожидайте подтверждения администратором."
     )
     user_id = message.from_user.id
-    pending = get_pending_orders()
-    user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
     order_info = ""
     order_id_str = ""
-    if user_pending:
-        target = max(user_pending, key=lambda o: o["id"])
-        order_id_str = f"_{target['id']}"
-        order_info = (
-            f"\n\n📦 <b>Заказ #{target['id']}</b>\n"
-            f"├ Товар: {target['product_name']}\n"
-            f"├ Сумма: {target['price']:,} ₽\n"
-            f"├ Способ: {target['payment_method']}\n"
-            f"└ Создан: {target['created_at']}"
-        )
+    known_order_id = pending_crypto_order.pop(user_id, None)
+    if known_order_id:
+        target_order = get_order(known_order_id)
+        if target_order and target_order["user_id"] == user_id and target_order["status"] == "pending":
+            order_id_str = f"_{target_order['id']}"
+            order_info = (
+                f"\n\n📦 <b>Заказ #{target_order['id']}</b>\n"
+                f"├ Товар: {target_order['product_name']}\n"
+                f"├ Сумма: {target_order['price']:,} ₽\n"
+                f"├ Способ: {target_order['payment_method']}\n"
+                f"└ Создан: {target_order['created_at']}"
+            )
+    if not order_id_str:
+        pending = get_pending_orders()
+        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+        if user_pending:
+            target_order = max(user_pending, key=lambda o: o["id"])
+            order_id_str = f"_{target_order['id']}"
+            order_info = (
+                f"\n\n📦 <b>Заказ #{target_order['id']}</b>\n"
+                f"├ Товар: {target_order['product_name']}\n"
+                f"├ Сумма: {target_order['price']:,} ₽\n"
+                f"├ Способ: {target_order['payment_method']}\n"
+                f"└ Создан: {target_order['created_at']}"
+            )
     caption = (
         f"📸 <b>Скриншот оплаты от пользователя</b>\n"
         f"👤 ID: <code>{user_id}</code>\n"

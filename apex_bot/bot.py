@@ -93,7 +93,8 @@ async def nicepay_webhook_handler(request: web.Request):
         user_id = order["user_id"]
 
         if order["product_id"] == "deposit":
-            add_balance(user_id, order["price"])
+            new_balance = add_balance(user_id, order["price"])
+            logger.info(f"NicePay webhook ADD BALANCE: user_id={user_id} amount={order['price']} new_balance={new_balance}")
             msg = (
                 f"💰 <b>Баланс пополнен!</b>\n\n"
                 f"📄 Платёж №<b>{order_id}</b>\n"
