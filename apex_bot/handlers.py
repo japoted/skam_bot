@@ -772,7 +772,7 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
 async def cb_admin_reject_photo(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         return
-    user_id = int(callback.data[18:])
+    user_id = int(callback.data[19:])
     orders = get_pending_orders()
     user_orders = [o for o in orders if o["user_id"] == user_id]
     if not user_orders:
