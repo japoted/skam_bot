@@ -232,18 +232,12 @@ async def main():
 
     await bot.delete_webhook(drop_pending_updates=True)
     webhook_task = asyncio.create_task(start_webhook_server(bot))
-    autocheck_task = asyncio.create_task(auto_check_nicepay(bot))
     try:
         await dp.start_polling(bot)
     finally:
         webhook_task.cancel()
-        autocheck_task.cancel()
         try:
             await webhook_task
-        except asyncio.CancelledError:
-            pass
-        try:
-            await autocheck_task
         except asyncio.CancelledError:
             pass
 

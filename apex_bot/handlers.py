@@ -367,6 +367,7 @@ async def cb_pay_card(callback: CallbackQuery):
 
     qty = pending_quantity.pop(callback.from_user.id, 1)
     order_id = create_order(callback.from_user.id, pid, p["name"], price, "nicepay", qty)
+    pending_crypto_order[callback.from_user.id] = order_id
 
     # Создаем платеж в NicePay
     await callback.answer("⏳ Создаю ссылку на оплату...")
@@ -561,6 +562,7 @@ async def cb_pay_stars(callback: CallbackQuery):
 async def cb_dep_pay_card(callback: CallbackQuery):
     amount = int(callback.data.split("_")[-1])
     order_id = create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "nicepay")
+    pending_crypto_order[callback.from_user.id] = order_id
 
     await callback.answer("⏳ Создаю ссылку на оплату...")
     result = await create_nicepay_payment(order_id=order_id, amount=amount, customer=callback.from_user.id)
@@ -880,7 +882,7 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
             embedded_order_id = None
     if not embedded_order_id:
         orders = get_pending_orders()
-        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card", "nicepay")]
         if not user_orders:
             user_orders = [o for o in orders if o["user_id"] == user_id]
         if not user_orders:
@@ -937,7 +939,7 @@ async def cb_admin_reject_photo(callback: CallbackQuery):
             embedded_order_id = None
     if not embedded_order_id:
         orders = get_pending_orders()
-        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card", "nicepay")]
         if not user_orders:
             user_orders = [o for o in orders if o["user_id"] == user_id]
         if not user_orders:
@@ -1273,7 +1275,7 @@ async def handle_photo(message: Message):
             )
     if not order_id_str:
         pending = get_pending_orders()
-        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card")]
+        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card", "nicepay")]
         if user_pending:
             target_order = max(user_pending, key=lambda o: o["id"])
             order_id_str = f"_{target_order['id']}"
