@@ -81,9 +81,77 @@ async def _nav(callback: CallbackQuery, text: str, reply_markup, answer_text="",
         if show_alert:
             await callback.answer(answer_text, show_alert=True)
         else:
-            await callback.answer()
+        await callback.answer()
     except Exception:
         pass
+
+
+admin_give_balance_state: dict[int, dict] = {}
+
+
+@router.callback_query(F.data == "admin_give_balance")
+async def cb_admin_give_balance_start(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        return
+    admin_give_balance_state[callback.from_user.id] = {"step": "user_id"}
+    await callback.message.edit_text(
+        "💰 <b>Выдать баланс</b>\n\n"
+        "Отправьте ID пользователя (числовой):",
+        reply_markup=InlineKeyboardBuilder().button(text="❌ Отмена", callback_data="admin_cancel_give").as_markup(),
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "admin_cancel_give")
+async def cb_admin_cancel_give(callback: CallbackQuery):
+    admin_give_balance_state.pop(callback.from_user.id, None)
+    await callback.message.edit_text("🔧 Панель администратора", reply_markup=admin_panel())
+    await callback.answer()
+
+
+@router.message(F.text, F.from_user.id.in_(ADMIN_IDS))
+async def cb_admin_give_balance_process(message: Message):
+    state = admin_give_balance_state.get(message.from_user.id)
+    if not state:
+        return
+    text = message.text.strip()
+
+    if state["step"] == "user_id":
+        if not text.isdigit():
+            await message.answer("❌ ID должен быть числом. Попробуйте ещё раз:")
+            return
+        state["target_user_id"] = int(text)
+        state["step"] = "amount"
+        await message.answer(
+            f"👤 Пользователь: <code>{text}</code>\n\n"
+            "💵 Введите сумму (число, например 500):",
+            reply_markup=InlineKeyboardBuilder().button(text="❌ Отмена", callback_data="admin_cancel_give").as_markup(),
+        )
+        return
+
+    if state["step"] == "amount":
+        if not text.isdigit() or int(text) <= 0:
+            await message.answer("❌ Сумма должна быть положительным числом. Попробуйте ещё раз:")
+            return
+        target_user_id = state["target_user_id"]
+        amount = int(text)
+        new_balance = add_balance(target_user_id, amount)
+        admin_give_balance_state.pop(message.from_user.id, None)
+        await message.answer(
+            f"✅ <b>Баланс выдан!</b>\n\n"
+            f"👤 Пользователь: <code>{target_user_id}</code>\n"
+            f"💵 Сумма: +{amount:,} ₽\n"
+            f"💰 Новый баланс: {new_balance:,} ₽",
+            reply_markup=admin_panel(),
+        )
+        try:
+            await message.bot.send_message(
+                target_user_id,
+                f"💰 <b>Баланс пополнен администратором!</b>\n\n💵 Сумма: +{amount:,} ₽\n💰 Баланс: {new_balance:,} ₽",
+                reply_markup=bottom_menu(),
+            )
+        except:
+            pass
 
 
 async def _send_with_banner(target: Message, banner_key: str, text: str, reply_markup=None):

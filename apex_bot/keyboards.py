@@ -126,6 +126,9 @@ def admin_panel() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(text="📋 Заявки на оплату", callback_data="admin_orders"),
     )
+    builder.row(
+        InlineKeyboardButton(text="💰 Выдать баланс", callback_data="admin_give_balance"),
+    )
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="main_menu"))
     return builder.as_markup()
 
