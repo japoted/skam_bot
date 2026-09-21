@@ -81,7 +81,7 @@ async def _nav(callback: CallbackQuery, text: str, reply_markup, answer_text="",
         if show_alert:
             await callback.answer(answer_text, show_alert=True)
         else:
-        await callback.answer()
+            await callback.answer()
     except Exception:
         pass
 
