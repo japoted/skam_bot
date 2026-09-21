@@ -109,7 +109,7 @@ async def cb_admin_cancel_give(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.message(F.text, F.from_user.id.in_(ADMIN_IDS))
+@router.message(F.text, F.from_user.id.in_(ADMIN_IDS), lambda m: admin_give_balance_state.get(m.from_user.id))
 async def cb_admin_give_balance_process(message: Message):
     state = admin_give_balance_state.get(message.from_user.id)
     if not state:
