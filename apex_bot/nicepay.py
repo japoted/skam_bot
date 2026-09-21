@@ -96,8 +96,7 @@ async def check_nicepay_payment(order_id: int | str) -> dict:
     Проверяет статус платежа в NicePay через API.
     NicePay.io может поддерживать GET /public/api/payment/{order_id} или аналогичный эндпоинт.
     """
-    api_base = NICEPAY_API_URL.rsplit("/", 1)[0] if "/" in NICEPAY_API_URL else NICEPAY_API_URL
-    check_url = f"{api_base}/{order_id}"
+    check_url = f"{NICEPAY_API_URL}/{order_id}"
 
     try:
         async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
