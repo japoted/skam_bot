@@ -26,16 +26,18 @@ PROXY = os.getenv("PROXY", "")  # например "http://user:pass@ip:port" и
 
 OFFER_URL = os.getenv("OFFER_URL", "")
 
-# ── NicePay ──
-NICEPAY_MERCHANT_ID = os.getenv("NICEPAY_MERCHANT_ID", "")
-NICEPAY_SECRET = os.getenv("NICEPAY_SECRET", "")
-NICEPAY_API_URL = os.getenv("NICEPAY_API_URL", "https://nicepay.io/public/api/payment")
-NICEPAY_CURRENCY = os.getenv("NICEPAY_CURRENCY", "RUB")
-# публичный URL куда NicePay будет слать webhook, например https://example.com/nicepay/callback
-NICEPAY_CALLBACK_URL = os.getenv("NICEPAY_CALLBACK_URL", "")
-# порт для локального webhook-сервера (aiohttp)
-NICEPAY_WEBHOOK_PORT = int(os.getenv("NICEPAY_WEBHOOK_PORT", "8080"))
-NICEPAY_WEBHOOK_PATH = os.getenv("NICEPAY_WEBHOOK_PATH", "/nicepay/callback")
+# ── CrocoPay (H2H) ──
+CROCOPAY_CLIENT_ID = os.getenv("CROCOPAY_CLIENT_ID", "")
+CROCOPAY_CLIENT_SECRET = os.getenv("CROCOPAY_CLIENT_SECRET", "")
+CROCOPAY_API_URL = os.getenv("CROCOPAY_API_URL", "https://crocopay.tech")
+CROCOPAY_CURRENCY = os.getenv("CROCOPAY_CURRENCY", "RUB")
+CROCOPAY_PAYMENT_OPTION = os.getenv("CROCOPAY_PAYMENT_OPTION", "TO_CARD")
+# публичный URL куда CrocoPay будет слать webhook, например https://xxx.bothost.tech/crocopay/callback
+# order_id дописывается автоматически: {CROCOPAY_CALLBACK_URL}?order_id=123
+CROCOPAY_CALLBACK_URL = os.getenv("CROCOPAY_CALLBACK_URL", "")
+# порт для локального webhook-сервера (aiohttp, на BotHost обычно 80)
+CROCOPAY_WEBHOOK_PORT = int(os.getenv("CROCOPAY_WEBHOOK_PORT", "80"))
+CROCOPAY_WEBHOOK_PATH = os.getenv("CROCOPAY_WEBHOOK_PATH", "/crocopay/callback")
 
 CRYPTO_WALLET = os.getenv("CRYPTO_WALLET", "")
 

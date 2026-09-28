@@ -52,6 +52,10 @@ def init_db():
             db.execute("ALTER TABLE orders ADD COLUMN qty INTEGER DEFAULT 1")
         except:
             pass
+        try:
+            db.execute("ALTER TABLE orders ADD COLUMN invoice_id TEXT DEFAULT ''")
+        except:
+            pass
 
         db.executescript("""
             CREATE TABLE IF NOT EXISTS token_meta (
@@ -208,6 +212,17 @@ def get_order_user_id(order_id: int) -> int | None:
     with get_db() as db:
         row = db.execute("SELECT user_id FROM orders WHERE id = ?", (order_id,)).fetchone()
         return row["user_id"] if row else None
+
+
+def set_order_invoice(order_id: int, invoice_id: str):
+    with get_db() as db:
+        db.execute("UPDATE orders SET invoice_id = ? WHERE id = ?", (invoice_id, order_id))
+
+
+def get_order_by_invoice(invoice_id: str) -> dict | None:
+    with get_db() as db:
+        row = db.execute("SELECT * FROM orders WHERE invoice_id = ?", (invoice_id,)).fetchone()
+        return dict(row) if row else None
 
 
 def reject_order(order_id: int):

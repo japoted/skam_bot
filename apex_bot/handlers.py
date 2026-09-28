@@ -35,9 +35,9 @@ from database import (
     get_order_user_id, get_promocode, use_promocode,
     list_promocodes, create_promocode, delete_promocode,
     get_all_users, add_balance, claim_order, get_order,
-    get_token_meta, apply_converter,
+    get_token_meta, apply_converter, set_order_invoice,
 )
-from nicepay import create_nicepay_payment, check_nicepay_payment, is_nicepay_success
+from crocopay import create_crocopay_invoice, check_crocopay_invoice, is_crocopay_success, format_requisites
 from keyboards import (
     main_menu, bottom_menu, catalog_menu, category_products,
     product_actions, quantity_selector, payment_methods,
@@ -366,35 +366,36 @@ async def cb_pay_card(callback: CallbackQuery):
         return
 
     qty = pending_quantity.pop(callback.from_user.id, 1)
-    order_id = create_order(callback.from_user.id, pid, p["name"], price, "nicepay", qty)
+    order_id = create_order(callback.from_user.id, pid, p["name"], price, "crocopay", qty)
     pending_crypto_order[callback.from_user.id] = order_id
 
-    # Создаем платеж в NicePay
-    await callback.answer("⏳ Создаю ссылку на оплату...")
-    result = await create_nicepay_payment(order_id=order_id, amount=price, customer=callback.from_user.id)
+    # Создаем счёт в CrocoPay (H2H — реквизиты прямо в боте)
+    await callback.answer("⏳ Создаю реквизиты для оплаты...")
+    result = await create_crocopay_invoice(order_id=order_id, amount=price)
 
-    if result.get("status") == "success" and result.get("data", {}).get("link"):
-        link = result["data"]["link"]
+    if result.get("id"):
+        set_order_invoice(order_id, result["id"])
+        req = format_requisites(result)
         text = (
-            f"💳 <b>Оплата через NicePay</b>\n\n"
+            f"💳 <b>Оплата через CrocoPay</b>\n\n"
             f"Товар: <b>{p['name']}</b> x{qty}\n"
-            f"Сумма: <b>{price:,} ₽</b>\n"
+            f"Сумма к переводу: <b>{price:,} ₽</b>\n"
             f"Номер заказа: <b>#{order_id}</b>\n\n"
-            f"📌 Нажмите кнопку ниже для оплаты.\n"
-            f"После перевода отправьте скриншот оплаты в этот чат.\n"
-            f"Администратор проверит и подтвердит заказ.\n\n"
+            f"{req}\n\n"
+            f"📌 Переведите <b>точную сумму {price:,} ₽</b> по реквизитам выше.\n"
+            f"✅ Заказ выдастся <b>автоматически</b> после оплаты (обычно до 1-2 мин).\n"
+            f"Если автовыдача не сработала — нажмите «🔄 Проверить оплату».\n\n"
             f"👤 @richhelper1 — по всем вопросам писать администратору"
         )
         builder = InlineKeyboardBuilder()
-        builder.button(text="💳 Оплатить через NicePay", url=link)
-        builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
+        builder.button(text="🔄 Проверить оплату", callback_data=f"check_croco_{order_id}")
         builder.button(text="❌ Отмена", callback_data="catalog")
         builder.adjust(1)
         await _nav(callback, text, builder.as_markup())
     else:
-        err = result.get("data", {}).get("message") or str(result)[:300]
+        err = result.get("message") or str(result)[:300]
         text = (
-            f"❌ <b>Ошибка создания платежа NicePay</b>\n\n"
+            f"❌ <b>Ошибка создания платежа CrocoPay</b>\n\n"
             f"Товар: <b>{p['name']}</b> x{qty}\n"
             f"Сумма: <b>{price:,} ₽</b>\n"
             f"Заказ: <b>#{order_id}</b>\n\n"
@@ -562,33 +563,34 @@ async def cb_pay_stars(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("dep_pay_card_"))
 async def cb_dep_pay_card(callback: CallbackQuery):
     amount = int(callback.data.split("_")[-1])
-    order_id = create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "nicepay")
+    order_id = create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "crocopay")
     pending_crypto_order[callback.from_user.id] = order_id
 
-    await callback.answer("⏳ Создаю ссылку на оплату...")
-    result = await create_nicepay_payment(order_id=order_id, amount=amount, customer=callback.from_user.id)
+    await callback.answer("⏳ Создаю реквизиты для оплаты...")
+    result = await create_crocopay_invoice(order_id=order_id, amount=amount)
 
-    if result.get("status") == "success" and result.get("data", {}).get("link"):
-        link = result["data"]["link"]
+    if result.get("id"):
+        set_order_invoice(order_id, result["id"])
+        req = format_requisites(result)
         text = (
-            f"💳 <b>Пополнение через NicePay</b>\n\n"
+            f"💳 <b>Пополнение через CrocoPay</b>\n\n"
             f"📄 Платёж №<b>{order_id}</b>\n"
-            f"💵 Сумма: <b>{amount:,} ₽</b>\n\n"
-            f"📌 Нажмите кнопку ниже для оплаты.\n"
-            f"После перевода отправьте скриншот оплаты в этот чат.\n"
-            f"Администратор проверит и зачислит средства.\n\n"
+            f"💵 Сумма к переводу: <b>{amount:,} ₽</b>\n\n"
+            f"{req}\n\n"
+            f"📌 Переведите <b>точную сумму {amount:,} ₽</b> по реквизитам выше.\n"
+            f"✅ Баланс пополнится <b>автоматически</b> после оплаты.\n"
+            f"Если не зачислилось — нажмите «🔄 Проверить оплату».\n\n"
             f"👤 @richhelper1 — по всем вопросам писать администратору"
         )
         builder = InlineKeyboardBuilder()
-        builder.button(text="💳 Оплатить через NicePay", url=link)
-        builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
+        builder.button(text="🔄 Проверить оплату", callback_data=f"check_croco_{order_id}")
         builder.button(text="❌ Отмена", callback_data="deposit")
         builder.adjust(1)
         await _nav(callback, text, builder.as_markup())
     else:
-        err = result.get("data", {}).get("message") or str(result)[:300]
+        err = result.get("message") or str(result)[:300]
         text = (
-            f"❌ <b>Ошибка NicePay</b>\n\n"
+            f"❌ <b>Ошибка CrocoPay</b>\n\n"
             f"Сумма: <b>{amount:,} ₽</b>\n"
             f"Заказ: <b>#{order_id}</b>\n\n"
             f"Ошибка: <code>{err}</code>\n\n"
@@ -630,9 +632,9 @@ async def cb_dep_pay_stars(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("check_nicepay_"))
-async def cb_check_nicepay(callback: CallbackQuery):
-    order_id = int(callback.data[len("check_nicepay_"):])
+@router.callback_query(F.data.startswith("check_croco_"))
+async def cb_check_croco(callback: CallbackQuery):
+    order_id = int(callback.data[len("check_croco_"):])
     order = get_order(order_id)
     if not order:
         await callback.answer("Заказ не найден", show_alert=True)
@@ -682,9 +684,14 @@ async def cb_check_nicepay(callback: CallbackQuery):
         await callback.answer("❌ Заказ отклонён", show_alert=True)
         return
 
-    await callback.answer("⏳ Проверяю оплату в NicePay...", show_alert=False)
-    result = await check_nicepay_payment(order_id)
-    if is_nicepay_success(result):
+    invoice_id = (order.get("invoice_id") or "").strip()
+    if not invoice_id:
+        await callback.answer("❌ Счёт не найден. Создайте заказ заново.", show_alert=True)
+        return
+
+    await callback.answer("⏳ Проверяю оплату в CrocoPay...", show_alert=False)
+    result = await check_crocopay_invoice(invoice_id)
+    if is_crocopay_success(result):
         confirm_order(order_id)
         user_id = order["user_id"]
         if order["product_id"] == "deposit":
@@ -693,7 +700,7 @@ async def cb_check_nicepay(callback: CallbackQuery):
                 f"💰 <b>Баланс пополнен!</b>\n\n"
                 f"📄 Платёж №<b>{order_id}</b>\n"
                 f"💵 Сумма: <b>{order['price']:,} ₽</b>\n\n"
-                f"Оплачено через NicePay ✅"
+                f"Оплачено через CrocoPay ✅"
             )
             try:
                 await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
@@ -735,7 +742,7 @@ async def cb_check_nicepay(callback: CallbackQuery):
             try:
                 await callback.bot.send_message(
                     adm,
-                    f"✅ NicePay (ручная проверка): Заказ #{order_id} оплачен\n"
+                    f"✅ CrocoPay (ручная проверка): Заказ #{order_id} оплачен\n"
                     f"👤 Пользователь: <code>{user_id}</code>\n"
                     f"🛒 Товар: {order['product_name']}\n"
                     f"💵 Сумма: {order['price']:,} ₽",
@@ -743,7 +750,14 @@ async def cb_check_nicepay(callback: CallbackQuery):
             except:
                 pass
     else:
-        await callback.answer("❌ Оплата ещё не поступила. Попробуйте через минуту.", show_alert=True)
+        st = str(result.get("status", "")) if isinstance(result, dict) else ""
+        if st.lower() in ("expired", "cancelled", "failed"):
+            await callback.answer(f"❌ Счёт {st}. Создайте заказ заново.", show_alert=True)
+        else:
+            await callback.answer("❌ Оплата ещё не поступила. Попробуйте через минуту.", show_alert=True)
+
+
+
 
 
 @router.pre_checkout_query()
@@ -885,7 +899,7 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
             embedded_order_id = None
     if not embedded_order_id:
         orders = get_pending_orders()
-        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card", "nicepay")]
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "crocopay")]
         if not user_orders:
             user_orders = [o for o in orders if o["user_id"] == user_id]
         if not user_orders:
@@ -942,7 +956,7 @@ async def cb_admin_reject_photo(callback: CallbackQuery):
             embedded_order_id = None
     if not embedded_order_id:
         orders = get_pending_orders()
-        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card", "nicepay")]
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "crocopay")]
         if not user_orders:
             user_orders = [o for o in orders if o["user_id"] == user_id]
         if not user_orders:
@@ -1278,7 +1292,7 @@ async def handle_photo(message: Message):
             )
     if not order_id_str:
         pending = get_pending_orders()
-        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "card", "nicepay")]
+        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "crocopay")]
         if user_pending:
             target_order = max(user_pending, key=lambda o: o["id"])
             order_id_str = f"_{target_order['id']}"
