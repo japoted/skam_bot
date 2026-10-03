@@ -1,23 +1,11 @@
 """
 NicePay integration for Supermarket_cash
-Docs: https://nicepay.io/docs/merchant/payment / h2h_oneRequestPayment
+Docs: https://nicepay.io/docs/merchant/payment (POST https://nicepay.io/public/api/payment)
+      https://nicepay.io/docs/merchant/h2h_oneRequestPayment (POST .../h2hOneRequestPayment)
+      https://nicepay.io/docs/merchant/handler (GET callback with hash)
 Merchant ID: 6abfd3b3f58184ee8c0fcf31
-Secret: RttmJ-COlwa-jlvhR-Rwzal-2Jra8
-Base: https://nicepay.io
-
-Flow:
-  POST /api/merchant/payment  (or /api/merchant/h2h/oneRequest)
-    Body: { merchantId, secret OR headers, amount, currency, orderId, callbackUrl, description }
-    -> { id, status, paymentUrl / card / bank, expires_at }
-
-  GET /api/merchant/payment/{id}
-    -> { status: pending/success/failed, ... }
-
-  Webhook: POST {callbackUrl}?order_id=123
-    Body: { orderId, amount, status, sign }  sign = HMAC(orderId|amount, secret)
 """
 import hashlib
-import hmac
 import logging
 import os
 from typing import Optional
@@ -43,257 +31,208 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+CREATE_URL = "/public/api/payment"
+H2H_CREATE_URL = "/public/api/h2hOneRequestPayment"
+H2H_INFO_URL = "/public/api/h2hPaymentInfo"
+
+
 def _base_url() -> str:
     return (NICEPAY_API_URL or "https://nicepay.io").rstrip("/")
 
-def _headers() -> dict:
-    # NicePay uses X-Merchant-Id / X-Secret or Basic
-    return {
-        "X-Merchant-Id": NICEPAY_MERCHANT_ID,
-        "X-Secret-Key": NICEPAY_SECRET_KEY,
-        "Authorization": f"Bearer {NICEPAY_SECRET_KEY}",
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-    }
 
 def verify_nicepay_sign(payload: dict, secret: Optional[str] = None) -> bool:
+    """Проверка hash из хендлера NicePay по доке (PHP пример).
+
+    hash = sha256(implode('{np}', sorted_values + secret))
+    sorted: ksort($params, SORT_STRING) без hash, затем array_push secret.
+    """
     sec = secret or NICEPAY_SECRET_KEY
     if not isinstance(payload, dict) or not sec:
         return False
-    sign = str(payload.get("sign") or payload.get("signature") or payload.get("hash") or "")
+    sign = str(payload.get("hash", payload.get("sign", payload.get("signature", ""))))
     if not sign:
-        # No sign in payload — allow if order_id present (fallback for NicePay without sign)
-        # For security, we still check amount later
-        logger.warning(f"NicePay webhook no sign, payload keys: {list(payload.keys())}")
-        return True  # permissive for now, will verify amount + order_id
-    # Try common sign strings
-    candidates = []
-    # 1) orderId|amount
-    for order_key in ("orderId", "order_id", "order", "id", "merchantOrderId"):
-        if order_key in payload:
-            oid = str(payload[order_key])
-            amt = str(payload.get("amount", payload.get("sum", payload.get("total", ""))))
-            candidates.append(f"{oid}|{amt}")
-            candidates.append(f"{oid}:{amt}")
-            candidates.append(f"{oid}{amt}")
-    # 2) merchantId|orderId|amount
-    mid = str(payload.get("merchantId", NICEPAY_MERCHANT_ID))
-    for c in list(candidates):
-        candidates.append(f"{mid}|{c}")
-    # 3) original CrocoPay style for compat
-    for c in candidates:
-        expected = hmac.new(sec.encode(), c.encode(), hashlib.sha256).hexdigest()
-        if hmac.compare_digest(expected.lower(), sign.lower()):
-            return True
-        # also try md5
-        expected_md5 = hashlib.md5(c.encode()).hexdigest()
-        if hmac.compare_digest(expected_md5.lower(), sign.lower()):
-            return True
-    logger.warning(f"NicePay sign mismatch, got {sign}, candidates {candidates[:3]}")
-    return False
+        logger.warning(f"NicePay webhook no hash, keys: {list(payload.keys())}")
+        return False
+    params = {k: str(v) for k, v in payload.items() if k != "hash" and v is not None}
+    # ksort SORT_STRING = сортировка по ключам как строки
+    sorted_keys = sorted(params.keys())
+    values = [params[k] for k in sorted_keys]
+    values.append(sec)
+    raw = "{np}".join(values)
+    expected = hashlib.sha256(raw.encode()).hexdigest()
+    ok = expected.lower() == sign.lower()
+    if not ok:
+        logger.warning(f"NicePay hash mismatch: got {sign[:16]}... expected {expected[:16]}... raw_keys={sorted_keys}")
+    return ok
+
 
 def nicepay_webhook_amount(payload: dict) -> int:
+    """Сумма из webhook в РУБЛЯХ. В хендлере amount уже в копейках."""
     try:
-        for k in ("amount", "sum", "total", "price", "value"):
-            if k in payload:
-                v = payload[k]
-                # may be in kopeks or rubles
-                amt = int(float(str(v)))
-                if amt > 10000:  # likely kopeks
-                    return amt // 100
+        for k in ("amount", "sum", "total", "price", "value", "amountNum"):
+            if k in payload and payload[k] not in (None, ""):
+                amt = int(float(str(payload[k]).replace(" ", "").replace("₽", "")))
+                # в колбэке amount в копейках (5670 = 56.70)
+                if amt >= 1000:
+                    # эвристика: если есть amount_currency и значение большое — копейки
+                    return amt // 100 if amt % 100 != 0 or amt > 10000 else amt
                 return amt
         return 0
-    except:
+    except Exception:
         return 0
 
-# Endpoints to try (ordered by likelihood)
-CREATE_ENDPOINTS = [
-    "/api/merchant/payment",
-    "/api/merchant/payments",
-    "/api/merchant/order",
-    "/api/merchant/orders",
-    "/api/merchant/h2h/oneRequestPayment",
-    "/api/merchant/h2h/payment",
-    "/api/v1/merchant/payment",
-    "/api/v1/payment",
-    "/merchant/api/payment",
-]
-
-CHECK_ENDPOINTS = [
-    "/api/merchant/payment/{id}",
-    "/api/merchant/payments/{id}",
-    "/api/merchant/order/{id}",
-    "/api/merchant/h2h/paymentInfo",
-]
 
 async def create_nicepay_invoice(
     order_id: int | str,
     amount: int,
     currency: Optional[str] = None,
     description: Optional[str] = None,
+    customer: Optional[str] = None,
+    method: Optional[str] = None,
 ) -> dict:
-    """
-    Создаёт платёж в NicePay. Возвращает dict с id / paymentUrl / requisites
-    или {"status":"error","message":...}
+    """Создание счёта NicePay: POST /public/api/payment -> ссылка на форму.
+
+    amount в рублях, в API уходит в копейках (500 -> 50000).
+    Возвращает {"id": payment_id, "paymentUrl": link, ...}.
     """
     if not NICEPAY_MERCHANT_ID or not NICEPAY_SECRET_KEY:
         return {"status": "error", "message": "NICEPAY_MERCHANT_ID / SECRET не заданы в .env"}
-
     cur = (currency or os.getenv("NICEPAY_CURRENCY", "RUB")).upper()
-    base_cb = NICEPAY_CALLBACK_URL or ""
-    callback_url = f"{base_cb}{'&' if '?' in base_cb else '?'}order_id={order_id}" if base_cb else ""
+    amount_minor = int(amount) * 100
+    cust = str(customer or f"tg_{order_id}")[:50]
 
-    # payload variants to try
-    payload_variants = [
-        {
-            "merchantId": NICEPAY_MERCHANT_ID,
-            "merchant_id": NICEPAY_MERCHANT_ID,
-            "secret": NICEPAY_SECRET_KEY,
-            "secretKey": NICEPAY_SECRET_KEY,
-            "amount": int(amount),
-            "currency": cur,
-            "orderId": str(order_id),
-            "order_id": str(order_id),
-            "callbackUrl": callback_url,
-            "callback_url": callback_url,
-            "successUrl": NICEPAY_SUCCESS_URL,
-            "cancelUrl": NICEPAY_CANCEL_URL,
-            "description": description or f"Order #{order_id} Supermarket_cash",
-            "paymentMethod": "SBP",
-            "method": "SBP",
-        },
-        {
-            "merchantId": NICEPAY_MERCHANT_ID,
-            "amount": int(amount) * 100,  # kopeks
-            "currency": cur,
-            "orderId": str(order_id),
-            "callbackUrl": callback_url,
-            "description": description or f"Order #{order_id}",
-        },
-        {
-            "mid": NICEPAY_MERCHANT_ID,
-            "amt": int(amount),
-            "referenceNo": str(order_id),
-            "callBackUrl": callback_url,
-            "goodsNm": description or f"Order #{order_id}",
-        },
-    ]
-
-    last_err = ""
-    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
-        for endpoint in CREATE_ENDPOINTS:
-            url = f"{_base_url()}{endpoint}"
-            for payload in payload_variants:
-                # clean payload to only include relevant keys for endpoint (try full first)
-                logger.info(f"NicePay try {endpoint} payload order={order_id} amount={amount} {cur}")
+    payload = {
+        "merchant_id": NICEPAY_MERCHANT_ID,
+        "secret": NICEPAY_SECRET_KEY,
+        "order_id": str(order_id)[:50],
+        "customer": cust,
+        "amount": amount_minor,
+        "currency": cur,
+        "description": (description or f"Order #{order_id} Supermarket_cash")[:150],
+    }
+    if method:
+        payload["method"] = method
+    if NICEPAY_SUCCESS_URL:
+        payload["success_url"] = NICEPAY_SUCCESS_URL
+    if NICEPAY_CANCEL_URL:
+        payload["fail_url"] = NICEPAY_CANCEL_URL
+    try:
+        logger.info(f"NicePay create order={order_id} amount={amount_minor} {cur} customer={cust}")
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=20)) as session:
+            async with session.post(f"{_base_url()}{CREATE_URL}", json=payload) as resp:
                 try:
-                    # try JSON
-                    async with session.post(url, json=payload, headers=_headers()) as resp:
-                        text = await resp.text()
-                        try:
-                            data = await resp.json(content_type=None)
-                        except:
-                            data = {"raw": text}
-                        logger.info(f"NicePay {endpoint} {resp.status}: {str(data)[:800]}")
-                        if resp.status in (200, 201) and isinstance(data, dict):
-                            # success indicators: id, paymentUrl, redirect_url, card, requisites
-                            if data.get("id") or data.get("paymentUrl") or data.get("redirect_url") or data.get("url") or data.get("payUrl"):
-                                # normalize
-                                data["_endpoint"] = endpoint
-                                # ensure id field
-                                if not data.get("id") and data.get("orderId"):
-                                    data["id"] = data["orderId"]
-                                if not data.get("id") and data.get("_id"):
-                                    data["id"] = data["_id"]
-                                # if paymentUrl present, use it
-                                return data
-                            if data.get("status") == "success" or data.get("success"):
-                                return data
-                            # error with message
-                            msg = data.get("message") or data.get("error") or str(data)[:300]
-                            last_err = msg
-                            if resp.status >= 500:
-                                continue
-                            # 400 with validation -> try next payload variant
-                            if "amount" in str(msg).lower() or "currency" in str(msg).lower():
-                                continue
-                            return {"status": "error", "message": msg}
-                        elif resp.status == 404:
-                            # endpoint not found, try next endpoint
-                            last_err = f"404 {endpoint}"
-                            break  # next endpoint
-                        else:
-                            last_err = f"HTTP {resp.status}: {text[:300]}"
-                            continue
-                except Exception as e:
-                    logger.exception(f"NicePay {endpoint} failed: {e}")
-                    last_err = str(e)
-                    continue
-    return {"status": "error", "message": last_err or "NicePay: нет доступных методов (проверь merchantId/secret и callbackUrl)"}
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    return {"status": "error", "message": f"HTTP {resp.status}: {text[:200]}"}
+                logger.info(f"NicePay create {resp.status}: {str(data)[:800]}")
+                if isinstance(data, dict) and data.get("status") == "success":
+                    d = data.get("data", {})
+                    return {
+                        "id": d.get("payment_id", str(order_id)),
+                        "status": "success",
+                        "paymentUrl": d.get("link", ""),
+                        "redirect_url": d.get("link", ""),
+                        "amount": amount,
+                        "_raw": data,
+                    }
+                msg = ""
+                if isinstance(data, dict):
+                    d = data.get("data", {})
+                    msg = (d.get("message") if isinstance(d, dict) else "") or data.get("message") or str(data)[:300]
+                return {"status": "error", "message": msg or f"HTTP {resp.status}"}
+    except Exception as e:
+        logger.exception(f"NicePay create failed: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 async def create_nicepay_express_link(order_id: int | str, amount: int, currency: Optional[str] = None) -> dict:
-    # For NicePay, express link is same as invoice paymentUrl
     res = await create_nicepay_invoice(order_id, amount, currency)
-    if res.get("paymentUrl") or res.get("redirect_url") or res.get("url") or res.get("payUrl"):
-        url = res.get("paymentUrl") or res.get("redirect_url") or res.get("url") or res.get("payUrl")
+    url = res.get("paymentUrl") or res.get("redirect_url") or res.get("url") or res.get("payUrl")
+    if url:
         return {"status": "success", "redirect_url": url, "id": res.get("id")}
     return res
 
+
 async def check_nicepay_invoice(invoice_id: str) -> dict:
-    url_base = _base_url()
-    for pattern in CHECK_ENDPOINTS:
-        url = f"{url_base}{pattern.format(id=invoice_id)}"
-        # also try with query param
-        urls_to_try = [url, f"{url_base}/api/merchant/paymentInfo?orderId={invoice_id}", f"{url_base}/api/merchant/h2h/paymentInfo?orderId={invoice_id}"]
-        for u in urls_to_try:
-            try:
-                async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
-                    async with session.get(u, headers=_headers()) as resp:
-                        try:
-                            data = await resp.json(content_type=None)
-                        except:
-                            text = await resp.text()
-                            data = {"raw": text}
-                        logger.info(f"NicePay check {invoice_id} {u} -> {resp.status} {str(data)[:500]}")
-                        if resp.status == 200 and isinstance(data, dict):
-                            return data
-                        if resp.status == 404:
-                            continue
-            except Exception as e:
-                logger.exception(f"NicePay check {u} failed: {e}")
-                continue
-    return {"status": "error", "message": "not found"}
+    """Проверка статуса.
+
+    У мерчанта нет H2H-доступа (h2hPaymentInfo -> 'no access'),
+    поэтому для обычных /public/api/payment счетов статуса через API нет —
+    автовыдача идёт только через webhook-handler.
+    Возвращаем not_supported, чтобы кнопка 'Проверить' честно говорила ждать webhook.
+    """
+    payload = {
+        "merchant_id": NICEPAY_MERCHANT_ID,
+        "secret": NICEPAY_SECRET_KEY,
+        "payment": invoice_id,
+    }
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=10)) as session:
+            async with session.post(f"{_base_url()}{H2H_INFO_URL}", json=payload) as resp:
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    return {"status": "error", "message": f"HTTP {resp.status}: {text[:200]}"}
+                logger.info(f"NicePay check {invoice_id}: {resp.status} {str(data)[:500]}")
+                if isinstance(data, dict):
+                    d = data.get("data", {})
+                    if isinstance(d, dict) and "H2H" in str(d.get("message", "")):
+                        return {"status": "not_supported", "message": "polling недоступен, ждём webhook"}
+                    return data
+                return {"status": "error", "message": str(data)[:300]}
+    except Exception as e:
+        logger.exception(f"NicePay check failed: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 def is_nicepay_success(payload: dict) -> bool:
+    """Успех: handler result==success ИЛИ h2h status==5."""
     if not isinstance(payload, dict):
         return False
-    st = str(payload.get("status", payload.get("state", payload.get("result", "")))).lower()
-    return st in ("success", "paid", "completed", "confirmed", "done", "approved", "ok")
+    # handler формат
+    if str(payload.get("result", "")).lower() == "success":
+        return True
+    # h2h info формат: {status: success, data: {status: 5}}
+    if payload.get("status") == "success":
+        d = payload.get("data", {})
+        if isinstance(d, dict) and int(d.get("status", 0) or 0) == 5:
+            return True
+        # simple payment info без data.status
+        if not isinstance(d, dict):
+            return True
+    d = payload.get("data", {})
+    if isinstance(d, dict) and int(d.get("status", 0) or 0) == 5:
+        return True
+    st = str(payload.get("status", "")).lower()
+    return st in ("success", "paid", "completed", "confirmed", "done", "approved", "details_found")
+
 
 def format_requisites(inv: dict) -> str:
-    # NicePay may return card, sbp, qr
-    card = inv.get("card") or inv.get("requisite") or inv.get("account") or inv.get("details", {}).get("card") if isinstance(inv.get("details"), dict) else None
-    bank = inv.get("bank") or inv.get("bank_receiver") or inv.get("bankName") or ""
-    owner = inv.get("card_owner") or inv.get("receiver") or ""
-    url = inv.get("paymentUrl") or inv.get("redirect_url") or inv.get("payUrl") or inv.get("url") or ""
-    method = inv.get("paymentMethod") or inv.get("method") or ""
+    card = inv.get("card") or inv.get("wallet") or "—"
+    bank = inv.get("bank_receiver") or inv.get("bank") or ""
+    owner = inv.get("card_owner") or inv.get("comment") or ""
+    opt = inv.get("payment_option") or inv.get("method") or ""
+    exp = inv.get("expires_at") or inv.get("expire") or ""
+    url = inv.get("paymentUrl") or inv.get("redirect_url") or ""
     lines = []
     if card and card != "—":
-        lines.append(f"💳 Реквизиты: <code>{card}</code>")
+        # phone или card
+        if str(card).replace("+", "").replace(" ", "").isdigit() and len(str(card)) <= 12:
+            lines.append(f"📱 Номер (СБП): <code>{card}</code>")
+        else:
+            lines.append(f"💳 Реквизиты: <code>{card}</code>")
     if bank:
         lines.append(f"🏦 Банк: {bank}")
     if owner:
-        lines.append(f"👤 Получатель: {owner}")
-    if method:
-        lines.append(f"📡 Способ: {method} (СБП)")
+        lines.append(f"👤 Комментарий: {owner}")
+    if opt:
+        lines.append(f"📡 Способ: {opt}")
     if url:
         lines.append(f"🔗 Ссылка: {url}")
-    exp = inv.get("expires_at") or inv.get("expire") or inv.get("validUntil") or ""
     if exp:
         lines.append(f"⏳ Действуют до: {str(exp)[:16]}")
-    if not lines and url:
-        lines.append(f"🔗 Оплатите по ссылке: {url}")
     if not lines:
-        # fallback show id
-        lines.append(f"🆔 Платёж: <code>{inv.get('id','—')}</code>")
+        lines.append(f"🆔 Платёж: <code>{inv.get('id', '—')}</code>")
     return "\n".join(lines)

@@ -517,7 +517,8 @@ async def cb_pay_card(callback: CallbackQuery):
     pending_crypto_order[callback.from_user.id] = order_id
 
     await callback.answer("⏳ Создаю платёж NicePay...")
-    result = await create_nicepay_invoice(order_id=order_id, amount=price, description=p["name"])
+    customer = callback.from_user.username or str(callback.from_user.id)
+    result = await create_nicepay_invoice(order_id=order_id, amount=price, description=p["name"], customer=customer)
 
     if result.get("id") or result.get("paymentUrl") or result.get("redirect_url") or result.get("url"):
         inv_id = result.get("id") or result.get("orderId") or result.get("_id") or str(order_id)
@@ -758,7 +759,8 @@ async def cb_dep_pay_card(callback: CallbackQuery):
     pending_crypto_order[callback.from_user.id] = order_id
 
     await callback.answer("⏳ Создаю платёж NicePay...")
-    result = await create_nicepay_invoice(order_id=order_id, amount=amount, description="Пополнение баланса")
+    customer = callback.from_user.username or str(callback.from_user.id)
+    result = await create_nicepay_invoice(order_id=order_id, amount=amount, description="Пополнение баланса", customer=customer)
 
     if result.get("id") or result.get("paymentUrl") or result.get("redirect_url") or result.get("url"):
         inv_id = result.get("id") or result.get("orderId") or str(order_id)
@@ -962,6 +964,8 @@ async def cb_check_croco(callback: CallbackQuery):
         st = str(result.get("status", "")) if isinstance(result, dict) else ""
         if st.lower() in ("expired", "cancelled", "failed"):
             await callback.answer(f"❌ Счёт {st}. Создайте заказ заново.", show_alert=True)
+        elif st.lower() in ("not_supported",):
+            await callback.answer("⏳ NicePay подтверждает автоматически. Подождите 1-2 мин после оплаты — товар выдастся сам.", show_alert=True)
         else:
             await callback.answer("❌ Оплата ещё не поступила. Попробуйте через минуту.", show_alert=True)
 

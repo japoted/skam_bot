@@ -98,37 +98,31 @@ async def _deliver_nicepay_payment(bot: Bot, order_id: int, source: str, payload
 
 
 async def nicepay_webhook_handler(request: web.Request):
+    """Хендлер NicePay: GET ?result=success&payment_id=..&order_id=..&amount=..&hash=..
+
+    По доке https://nicepay.io/docs/merchant/handler hash = sha256(sorted values + secret).
+    """
     bot: Bot = request.app["bot"]
     try:
+        # NicePay шлёт GET с query-параметрами
+        q = dict(request.query)
         try:
-            payload = await request.json()
+            body = await request.json()
+            if not isinstance(body, dict):
+                body = {}
         except Exception:
             try:
-                data = await request.post()
-                payload = dict(data)
+                form = await request.post()
+                body = dict(form)
             except Exception:
-                text = await request.text()
-                logger.warning(f"NicePay webhook raw: {text[:1000]}")
-                try:
-                    payload = json.loads(text)
-                except Exception:
-                    payload = {"raw": text}
-        logger.info(f"NicePay webhook payload: {payload} query={dict(request.query)}")
+                body = {}
+        payload = {**body, **q}
+        logger.info(f"NicePay webhook payload: {payload}")
 
-        order_id_str = request.query.get("order_id") or request.query.get("orderId") or request.query.get("order")
-        if not order_id_str and isinstance(payload, dict):
-            for k in ("order_id", "orderId", "order", "user_id", "merchantOrderId", "referenceNo"):
-                v = payload.get(k)
-                if v is not None and str(v).isdigit():
-                    order_id_str = str(v)
-                    break
-            # also try nested
-            if not order_id_str and isinstance(payload.get("data"), dict):
-                for k in ("orderId", "order_id"):
-                    v = payload["data"].get(k)
-                    if v and str(v).isdigit():
-                        order_id_str = str(v)
-                        break
+        order_id_str = (
+            q.get("order_id") or q.get("orderId")
+            or body.get("order_id") or body.get("orderId")
+        )
         if not order_id_str or not str(order_id_str).isdigit():
             logger.warning("NicePay webhook: order_id not found")
             return web.json_response({"status": "error", "message": "order_id not found"}, status=400)
@@ -141,18 +135,24 @@ async def nicepay_webhook_handler(request: web.Request):
         if order["status"] == "confirmed":
             return web.json_response({"status": "ok", "message": "already confirmed"})
 
-        # проверка подписи — если есть sign, проверяем, иначе пропускаем (NicePay шлёт без sign в тесте)
-        if isinstance(payload, dict) and payload.get("sign"):
-            if not verify_nicepay_sign(payload):
-                logger.warning(f"NicePay webhook order #{order_id}: bad signature")
-                return web.json_response({"status": "error", "message": "invalid signature"}, status=403)
+        # только success выдаём
+        result = str(payload.get("result", "success")).lower()
+        if result not in ("success", "paid"):
+            logger.warning(f"NicePay webhook order #{order_id}: result={result}, игнор")
+            return web.json_response({"status": "ok", "message": f"ignored {result}"})
+
+        # проверка hash обязательна
+        if not verify_nicepay_sign(payload):
+            logger.warning(f"NicePay webhook order #{order_id}: bad hash")
+            return web.json_response({"status": "error", "message": "invalid hash"}, status=403)
 
         paid = nicepay_webhook_amount(payload)
         if paid and paid != order["price"]:
             logger.warning(f"NicePay webhook order #{order_id}: amount mismatch paid={paid} expected={order['price']} (автовыдача всё равно выполняется)")
 
         await _deliver_nicepay_payment(bot, order_id, "webhook", payload)
-        return web.json_response({"status": "ok"})
+        # по примеру PHP отвечаем {"result": {"message": "Success"}}
+        return web.json_response({"result": {"message": "Success"}})
     except Exception as e:
         logger.exception(f"NicePay webhook error: {e}")
         return web.json_response({"status": "error", "message": str(e)}, status=500)
@@ -174,34 +174,16 @@ async def start_webhook_server(bot: Bot):
 
 
 async def auto_check_nicepay(bot: Bot):
-    """Фоновая автопроверка NicePay каждые 30 сек."""
+    """У мерчанта нет H2H-доступа, polling недоступен — автовыдача только через webhook.
+
+    Оставляем задачу живой для bothost, но ничего не опрашиваем.
+    """
+    logger.info("NicePay auto-check disabled (no H2H access) — delivery via webhook only")
     while True:
         try:
-            await asyncio.sleep(30)
-            pending = get_pending_orders()
-            nice_pending = [o for o in pending if o.get("payment_method") == "nicepay"]
-            nice_pending = [o for o in nice_pending if o.get("invoice_id")]
-            if not nice_pending:
-                continue
-            logger.info(f"Auto-check NicePay: {len(nice_pending)} pending")
-            for order in nice_pending:
-                try:
-                    inv_id = order.get("invoice_id") or ""
-                    if not inv_id:
-                        continue
-                    result = await check_nicepay_invoice(inv_id)
-                    if is_nicepay_success(result):
-                        await _deliver_nicepay_payment(bot, order["id"], "автопроверка", result)
-                        logger.info(f"Auto-check: order #{order['id']} confirmed via NicePay")
-                    elif str(result.get("status", "")).lower() in ("expired", "cancelled", "failed", "rejected"):
-                        logger.info(f"Auto-check: order #{order['id']} status={result.get('status')}")
-                except Exception as e:
-                    logger.exception(f"Auto-check NicePay order #{order['id']}: {e}")
+            await asyncio.sleep(3600)
         except asyncio.CancelledError:
             break
-        except Exception as e:
-            logger.exception(f"Auto-check NicePay loop error: {e}")
-            await asyncio.sleep(10)
 
 
 async def main():
