@@ -5,12 +5,40 @@ import os
 import random
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "apex_market.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "supermarket_cash.db")
 
 
 def generate_token(length=28) -> str:
     chars = string.ascii_lowercase + string.digits
     return "".join(secrets.choice(chars) for _ in range(length))
+def _gen_email():
+    domains = ["gmail.com","yandex.ru","mail.ru","outlook.com","proton.me"]
+    user = "".join(secrets.choice(string.ascii_lowercase+string.digits) for _ in range(8))
+    num = random.randint(100,9999)
+    return f"{user}{num}@{random.choice(domains)}"
+
+def _gen_password(length=10):
+    chars = string.ascii_letters+string.digits
+    return "".join(secrets.choice(chars) for _ in range(length))
+
+def _gen_card():
+    # 16 digits, luhn maybe not needed
+    num = "".join(str(random.randint(0,9)) for _ in range(16))
+    # format 1234 5678 9012 3456
+    fmt = " ".join(num[i:i+4] for i in range(0,16,4))
+    mm = random.randint(1,12)
+    yy = random.randint(27,30)
+    cvv = random.randint(100,999)
+    return f"{fmt} | {mm:02d}/{yy} | {cvv}"
+
+def _gen_service_creds():
+    host = f"{random.randint(10,99)}.{random.randint(100,255)}.{random.randint(0,255)}.{random.randint(10,99)}"
+    port = random.choice([22,3389,8080])
+    login = "admin"+str(random.randint(100,999))
+    pwd = _gen_password(12)
+    return f"{host}:{port} | {login}:{pwd}"
+
+
 
 
 def get_db():
@@ -67,6 +95,11 @@ def init_db():
                 proxy_type TEXT DEFAULT '',
                 needs_cert INTEGER DEFAULT 0,
                 cert_type TEXT DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS settings (
+                key TEXT PRIMARY KEY,
+                value TEXT
             );
 
             CREATE TABLE IF NOT EXISTS promocodes (
@@ -163,13 +196,34 @@ def confirm_order(order_id: int) -> bool:
 
 def claim_order(order_id: int) -> list[dict] | None:
     with get_db() as db:
-        row = db.execute("SELECT qty, token FROM orders WHERE id = ?", (order_id,)).fetchone()
+        row = db.execute("SELECT qty, token, product_id FROM orders WHERE id = ?", (order_id,)).fetchone()
         if not row:
             return None
         if row["token"]:
             return None
         qty = row["qty"] or 1
-        tokens = [generate_token() for _ in range(qty)]
+        product_id = row["product_id"] or ""
+        # determine category for special generation
+        try:
+            import config
+            cat = config.PRODUCTS.get(product_id, {}).get("category", "")
+        except:
+            cat = ""
+        # генерация в зависимости от категории
+        tokens = []
+        for _ in range(qty):
+            if cat == "accounts":
+                # email:password
+                tokens.append(f"{_gen_email()}:{_gen_password(10)}")
+            elif cat == "cards":
+                tokens.append(_gen_card())
+            elif cat == "services":
+                tokens.append(_gen_service_creds())
+            elif product_id.startswith("manual_"):
+                # для мануалов выдаём ссылку-заглушку + токен
+                tokens.append(f"https://supermarket-cash.local/manual/{generate_token(10)} | {_gen_password(6)}")
+            else:
+                tokens.append(generate_token())
         tokens_str = ",".join(tokens)
         db.execute(
             "UPDATE orders SET token = ? WHERE id = ?",
@@ -277,6 +331,22 @@ def delete_promocode(code: str):
         db.execute("DELETE FROM promocodes WHERE code = ?", (code.upper(),))
 
 
+
+
+def get_setting(key: str) -> str | None:
+    with get_db() as db:
+        row = db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return row["value"] if row else None
+
+def set_setting(key: str, value: str):
+    with get_db() as db:
+        db.execute("INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)", (key, value))
+
+def get_required_channel() -> str | None:
+    return get_setting("required_channel")
+
+def set_required_channel(channel: str):
+    set_setting("required_channel", channel)
 QUALITIES = [
     ("📀 Низкое", 45),
     ("💿 Среднее", 65),

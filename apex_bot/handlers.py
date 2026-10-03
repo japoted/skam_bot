@@ -8,18 +8,99 @@ from aiogram.types import (
 )
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+# NewsEmoji animated premium — https://t.me/addemoji/NewsEmoji
 CUSTOM_EMOJI = [
-    "5210935566555714476", "5208444283660571410", "5211209302001355411",
-    "5211219901980643543", "5210733157631952350", "5210997770567062009",
-    "5210838989921106328", "5208610193952248503", "5208509635882947404",
-    "5211096541929968385", "5211226456100738227", "5208651176530185025",
-    "5210782897648212515", "5211204787990730015", "5208511706057184373",
-    "5208752507693601793", "5210889687715059785", "5210970420215320683",
-    "5211051638046887847", "5211010719893460599", "5208723615448602039",
-    "5208759023158988404", "5436040291507247633", "5461117441612462242",
-    "5431897022456145283", "5375296873982604963", "5472055112702629499",
-    "5357080225463149588", "5985472565508832112",
+    "5210956306952758910", "5461117441612462242", "5456140674028019486",
+    "5224607267797606837", "5229064374403998351", "5409048419211682843",
+    "5233326571099534068", "5424972470023104089", "5427168083074628963",
+    "5438496463044752972", "5447410659077661506", "5231200819986047254",
+    "5244837092042750681", "5206607081334906820", "5210952531676504517",
+    "5458603043203327669", "5334544901428229844", "5296369303661067030",
+    "5406683434124859552", "5251203410396458957", "5416081784641168838",
+    "5422439311196834318", "5461151367559141950", "5409048419211682843",
 ]
+
+# смысловые алиасы для Supermarket_cash
+E_SHOP = "5406683434124859552"  # 🛍
+E_MONEY = "5409048419211682843"  # 💵
+E_MONEY_FLY = "5233326571099534068"  # 💸
+E_FIRE = "5424972470023104089"  # 🔥
+E_DIAMOND = "5427168083074628963"  # 💎
+E_STAR = "5438496463044752972"  # ⭐
+E_GLOBE = "5447410659077661506"  # 🌐
+E_CHART = "5231200819986047254"  # 📊
+E_CHART_UP = "5244837092042750681"  # 📈
+E_CHECK = "5206607081334906820"  # ✔️
+E_CROSS = "5210952531676504517"  # ❌
+E_BELL = "5458603043203327669"  # 🔔
+E_INFO = "5334544901428229844"  # ℹ️
+E_LOCK = "5296369303661067030"  # 🔒
+E_SHIELD = "5251203410396458957"  # 🛡
+E_GREEN = "5416081784641168838"  # 🟢
+E_LIGHT = "5422439311196834318"  # 💡
+E_LIGHTNING = "5456140674028019486"  # ⚡️
+E_PARTY = "5461151367559141950"  # 🎉
+
+PRODUCT_EMOJI = {
+    "turbo_lite": "5406683434124859552",
+    "turbo": "5456140674028019486",
+    "x_turbo": "5424972470023104089",
+    "giga_turbo": "5427168083074628963",
+    "proxy_ipv4": "5251203410396458957",
+    "proxy_ipv6": "5447410659077661506",
+    "proxy_mobile": "5416081784641168838",
+    "manual_p2p_start": "5231200819986047254",
+    "manual_p2p_pro": "5244837092042750681",
+    "manual_airdrop": "5438496463044752972",
+    "manual_tiktok": "5458603043203327669",
+    "manual_cards": "5233326571099534068",
+    "manual_anon": "5296369303661067030",
+    "manual_binance_guide": "5409048419211682843",
+    "manual_bybit_guide": "5402186569006210455",
+    "manual_traffic_fb": "5422439311196834318",
+    "manual_combo_lite": "5461151367559141950",
+    "acc_binance": "5206607081334906820",
+    "acc_bybit": "5397782960512444700",
+    "acc_okx": "5222079954421818267",
+    "sim_rf": "5443038326535759644",
+    "dedik_usa": "5282843764451195532",
+    "antidetect": "5271604874419647061",
+    "vpn_premium": "5334544901428229844",
+    "card_virtual": "5278751923338490157",
+    "selfreg_fb": "5325547803936572038",
+    "wallet_clean": "5290017777174722330",
+    "cert_clean": "5229064374403998351",
+    "cert_express": "5231012545799666522",
+    "cert_guarantee": "5375338737028841420",
+    "cart_filter": "5440660757194744323",
+    "cash_converter": "5210952531676504517",
+}
+
+
+CATEGORY_EMOJI = {
+    "cash_boxes": "5456140674028019486",  # ⚡️
+    "shelf_proxies": "5406683434124859552",  # 🛍
+    "market_certs": "5397782960512444700",  # 📌
+    "cart_filter": "5231012545799666522",  # 🔍
+    "market_converter": "5375338737028841420",  # 🔄
+    "manuals": "5231200819986047254",  # 📊
+    "accounts": "5206607081334906820",  # ✔️
+    "services": "5282843764451195532",  # 🖥
+    "cards": "5233326571099534068",  # 💸
+}
+def _category_premium(cat: str) -> str:
+    eid = CATEGORY_EMOJI.get(cat, E_INFO)
+    fb = {"cash_boxes":"⚡️","shelf_proxies":"🛍","market_certs":"📌","cart_filter":"🔍","market_converter":"🔄","manuals":"📊","accounts":"✔️","services":"🖥","cards":"💸"}.get(cat,"📁")
+    return _ce(eid, fb)
+
+def _premium_for(pid: str) -> str:
+    eid = PRODUCT_EMOJI.get(pid, E_STAR)
+    fb_map = {"turbo_lite": "🛍", "turbo": "⚡️", "x_turbo": "🔥", "giga_turbo": "💎", "proxy_ipv4": "🛡", "proxy_ipv6": "🌐", "proxy_mobile": "🟢", "manual_p2p_start": "📊", "manual_p2p_pro": "📈", "manual_airdrop": "⭐", "manual_tiktok": "🔔", "manual_cards": "💸", "manual_anon": "🔒", "manual_binance_guide": "💵", "manual_bybit_guide": "💱", "manual_traffic_fb": "💡", "manual_combo_lite": "🎉", "acc_binance": "✔️", "acc_bybit": "📌", "acc_okx": "🆒", "sim_rf": "💬", "dedik_usa": "🖥", "antidetect": "🔗", "vpn_premium": "ℹ️", "card_virtual": "💸", "selfreg_fb": "✨", "wallet_clean": "💸", "cert_clean": "🛍", "cert_express": "🔍", "cert_guarantee": "🔄", "cart_filter": "‼️", "cash_converter": "❌"}
+    fallback = fb_map.get(pid, "⭐")
+    return _ce(eid, fallback)
+
+E_LIGHTNING = "5456140674028019486"  # ⚡️
+
 
 
 def _ce(eid: str, fallback: str = "⭐") -> str:
@@ -28,7 +109,7 @@ def _ce(eid: str, fallback: str = "⭐") -> str:
 pending_crypto_order: dict[int, int] = {}
 
 import config
-from config import ADMIN_IDS, PRODUCTS, CRYPTO_WALLET, OFFER_URL
+from config import ADMIN_IDS, PRODUCTS, CRYPTO_WALLET, OFFER_URL, MAIN_ADMIN
 from database import (
     register_user, get_user, get_user_orders, get_order_stats,
     create_order, get_pending_orders, confirm_order, reject_order,
@@ -36,8 +117,9 @@ from database import (
     list_promocodes, create_promocode, delete_promocode,
     get_all_users, add_balance, claim_order, get_order,
     get_token_meta, apply_converter, set_order_invoice,
+    get_setting, set_setting, get_required_channel, set_required_channel,
 )
-from crocopay import create_crocopay_invoice, check_crocopay_invoice, is_crocopay_success, format_requisites
+from nicepay import create_nicepay_invoice, check_nicepay_invoice, is_nicepay_success, format_requisites
 from keyboards import (
     main_menu, bottom_menu, catalog_menu, category_products,
     product_actions, quantity_selector, payment_methods,
@@ -60,11 +142,17 @@ BANNERS = {
     "support": os.path.join(os.path.dirname(__file__), "5379983559935860452.jpg"),
     "profile": os.path.join(os.path.dirname(__file__), "провиль.jfif"),
     "deposit": os.path.join(os.path.dirname(__file__), "пополнение.jfif"),
-    "dns_tokens": os.path.join(os.path.dirname(__file__), "5442751204137048819.jpg"),
-    "proxies": os.path.join(os.path.dirname(__file__), "баннер прокси.jfif"),
-    "licenses": os.path.join(os.path.dirname(__file__), "лицензия.jfif"),
+    "cash_boxes": os.path.join(os.path.dirname(__file__), "5442751204137048819.jpg"),
+    "shelf_proxies": os.path.join(os.path.dirname(__file__), "баннер прокси.jfif"),
+    "market_certs": os.path.join(os.path.dirname(__file__), "лицензия.jfif"),
     "info": os.path.join(os.path.dirname(__file__), "информация.jfif"),
     "catalog": os.path.join(os.path.dirname(__file__), "каталог.jfif"),
+    "accounts": os.path.join(os.path.dirname(__file__), "cat_accounts.jpg"),
+    "services": os.path.join(os.path.dirname(__file__), "cat_services.jpg"),
+    "cards": os.path.join(os.path.dirname(__file__), "cat_cards.jpg"),
+    "manuals": os.path.join(os.path.dirname(__file__), "cat_services.jpg"),
+    "cart_filter": os.path.join(os.path.dirname(__file__), "cat_services.jpg"),
+    "market_converter": os.path.join(os.path.dirname(__file__), "cat_services.jpg"),
 }
 
 
@@ -166,11 +254,14 @@ async def _send_with_banner(target: Message, banner_key: str, text: str, reply_m
 async def _send_main_menu(target: Message | CallbackQuery):
     user_first = target.from_user.first_name or ""
     text = (
-        f"<b>👋 Добро пожаловать, {user_first}!</b>\n\n"
-        "<b>Добро пожаловать в RICH MARKET!</b>\n\n"
-        "<b>У нас ты найдешь самые дешевые материалы для заработка!</b>\n\n"
-        "<b>Заглядывай в каталог 👇</b>\n"
-        "<b>Выбери раздел и выбирай товары по самым приятным ценам</b>"
+        f"{_ce(E_PARTY,'🎉')} <b>Привет, {user_first}!</b> {_ce(E_STAR,'⭐')}\n\n"
+        f"{_ce(E_SHOP,'🛒')} <b>Supermarket_cash — первый супермаркет кэша в Telegram</b> {_ce(E_MONEY,'💵')}\n\n"
+        f"{_ce(E_FIRE,'🔥')} <b>Мы уже помогли 5 200+ клиентам заработать</b> — бери ТУРБО-бокс с полки и иди к кассе!\n\n"
+        f"{_ce(E_CHECK,'✔️')} Выдача за 2 минуты • чистые чеки • без холда\n"
+        f"{_ce(E_CHART_UP,'📈')} Оборот 200M+ ₽ • цены от 490₽ • гарант\n"
+        f"{_ce(E_SHIELD,'🛡')} Поддержка {_ce(E_BELL,'🔔')} 24/7 • полки всегда в наличии • {_ce(E_DIAMOND,'💎')} топ-качество\n\n"
+        f"{_ce(E_GREEN,'🟢')} <b>Бери тележку и заглядывай в каталог 👇</b>\n"
+        f"{_ce(E_LIGHT,'💡')} <i>Выбери отдел — забери товар по оптовой цене. Сегодня скидки на ТУРБО!</i>"
     )
     if os.path.isfile(BANNER):
         photo = FSInputFile(BANNER)
@@ -191,7 +282,44 @@ async def _send_main_menu(target: Message | CallbackQuery):
 @router.message(CommandStart())
 async def cmd_start(message: Message):
     register_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    # обязательная подписка
+    ch = get_required_channel()
+    if ch:
+        try:
+            member = await message.bot.get_chat_member(ch, message.from_user.id)
+            if member.status in ("left", "kicked"):
+                builder = InlineKeyboardBuilder()
+                # ch may be @username or -100 id; handle invite link
+                if ch.startswith("@"):
+                    url = f"https://t.me/{ch[1:]}"
+                else:
+                    url = f"https://t.me/{str(ch).replace('@','')}"
+                builder.button(text="📢 Подписаться на канал", url=url)
+                builder.button(text="✅ Проверить подписку", callback_data="check_sub")
+                builder.adjust(1)
+                await message.answer(f"🔒 <b>Подпишись на канал {ch} чтобы пользоваться Supermarket_cash!</b>", reply_markup=builder.as_markup())
+                return
+        except Exception as e:
+            # если бот не админ в канале — пропускаем проверку (логируем)
+            logger.warning(f"check_sub failed {ch}: {e}")
     await _send_main_menu(message)
+
+@router.callback_query(F.data == "check_sub")
+async def cb_check_sub(callback: CallbackQuery):
+    ch = get_required_channel()
+    if not ch:
+        await _send_main_menu(callback)
+        return
+    try:
+        member = await callback.bot.get_chat_member(ch, callback.from_user.id)
+        if member.status in ("left", "kicked"):
+            await callback.answer("❌ Ты ещё не подписался!", show_alert=True)
+            return
+    except:
+        pass
+    await callback.message.delete()
+    await _send_main_menu(callback)
+    await callback.answer("✅ Подписка подтверждена!", show_alert=True)
 
 
 @router.message(Command("myid"))
@@ -214,7 +342,9 @@ async def cb_main_menu(callback: CallbackQuery):
 
 @router.callback_query(F.data == "catalog")
 async def cb_catalog(callback: CallbackQuery):
-    text = "📁 <b>Каталог товаров</b>\n\nВыбери необходимую категорию товаров:"
+    # premium list of categories for wow
+    cat_list = "\n".join([f"{_category_premium(k)} {v}" for k,v in config.CATEGORIES.items()])
+    text = f"{_ce(E_SHOP,'🛒')} <b>Каталог Supermarket_cash</b> {_ce(E_FIRE,'🔥')}\n\n{cat_list}\n\n{_ce(E_DIAMOND,'💎')} Выбери отдел:"
     path = BANNERS.get("catalog")
     if path and os.path.isfile(path):
         await callback.message.delete()
@@ -232,7 +362,8 @@ async def cb_catalog(callback: CallbackQuery):
 async def cb_category(callback: CallbackQuery):
     cat_key = callback.data[4:]
     cat_name = config.CATEGORIES.get(cat_key, cat_key)
-    text = f"📂 <b>{cat_name}</b>\n\nВыбери нужный товар:"
+    prem = _category_premium(cat_key)
+    text = f"{prem} <b>{cat_name}</b>\n\nВыбери нужный товар:"
     path = BANNERS.get(cat_key)
     if path and os.path.isfile(path):
         await callback.message.delete()
@@ -254,13 +385,29 @@ async def cb_product(callback: CallbackQuery):
         await callback.answer("Товар не найден", show_alert=True)
         return
 
-    stock = "✅ В наличии" if p["in_stock"] else "❌ Нет в наличии"
+    stock = f"{_ce(E_CHECK,'✅')} В наличии" if p["in_stock"] else f"{_ce(E_CROSS,'❌')} Нет в наличии"
+    # remove leading unicode emoji from name/desc for clean premium display (exactly one premium)
+    import re as _re
+    clean_name = _re.sub(r'^[^\w<]+\s*', '', p['name'])
+    clean_desc = _re.sub(r'^[^\w<]+\s*', '', p['desc'])
+    prem = _premium_for(pid)
     text = (
-        f"<b>{p['name']}</b>\n\n"
-        f"<b>Описание:</b> {p['desc']}\n\n"
+        f"{prem} <b>{clean_name}</b>\n\n"
+        f"<b>Описание:</b> {clean_desc}\n\n"
         f"<b>Цена:</b> {p['price']:,} ₽\n"
         f"<b>Статус:</b> {stock}"
     )
+    # если есть персональная картинка товара — шлём её
+    prod_img = os.path.join(os.path.dirname(__file__), "products", f"{pid}.jpg")
+    if os.path.isfile(prod_img):
+        try:
+            await callback.message.delete()
+            photo = FSInputFile(prod_img)
+            await callback.bot.send_photo(chat_id=callback.message.chat.id, photo=photo, caption=text, reply_markup=product_actions(pid))
+            await callback.answer()
+            return
+        except Exception as e:
+            logger.warning(f"product img send fail {pid}: {e}")
     await _nav(callback, text, product_actions(pid))
 
 
@@ -366,41 +513,58 @@ async def cb_pay_card(callback: CallbackQuery):
         return
 
     qty = pending_quantity.pop(callback.from_user.id, 1)
-    order_id = create_order(callback.from_user.id, pid, p["name"], price, "crocopay", qty)
+    order_id = create_order(callback.from_user.id, pid, p["name"], price, "nicepay", qty)
     pending_crypto_order[callback.from_user.id] = order_id
 
-    # Создаем счёт в CrocoPay (H2H — реквизиты прямо в боте)
-    await callback.answer("⏳ Создаю реквизиты для оплаты...")
-    result = await create_crocopay_invoice(order_id=order_id, amount=price)
+    await callback.answer("⏳ Создаю платёж NicePay...")
+    result = await create_nicepay_invoice(order_id=order_id, amount=price, description=p["name"])
 
-    if result.get("id"):
-        set_order_invoice(order_id, result["id"])
-        req = format_requisites(result)
-        text = (
-            f"💳 <b>Оплата через CrocoPay</b>\n\n"
-            f"Товар: <b>{p['name']}</b> x{qty}\n"
-            f"Сумма к переводу: <b>{price:,} ₽</b>\n"
-            f"Номер заказа: <b>#{order_id}</b>\n\n"
-            f"{req}\n\n"
-            f"📌 Переведите <b>точную сумму {price:,} ₽</b> по реквизитам выше.\n"
-            f"✅ Заказ выдастся <b>автоматически</b> после оплаты (обычно до 1-2 мин).\n"
-            f"Если автовыдача не сработала — нажмите «🔄 Проверить оплату».\n\n"
-            f"👤 @richhelper1 — по всем вопросам писать администратору"
-        )
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🔄 Проверить оплату", callback_data=f"check_croco_{order_id}")
-        builder.button(text="❌ Отмена", callback_data="catalog")
-        builder.adjust(1)
-        await _nav(callback, text, builder.as_markup())
+    if result.get("id") or result.get("paymentUrl") or result.get("redirect_url") or result.get("url"):
+        inv_id = result.get("id") or result.get("orderId") or result.get("_id") or str(order_id)
+        set_order_invoice(order_id, str(inv_id))
+        pay_url = result.get("paymentUrl") or result.get("redirect_url") or result.get("url") or result.get("payUrl")
+        if pay_url:
+            text = (
+                f"💳 <b>Оплата через NicePay (СБП)</b>\n\n"
+                f"Товар: <b>{p['name']}</b> x{qty}\n"
+                f"Сумма: <b>{price:,} ₽</b>\n"
+                f"Номер заказа: <b>#{order_id}</b>\n\n"
+                f"📌 Нажмите кнопку ниже и оплатите по СБП/карте.\n"
+                f"✅ Заказ выдастся <b>автоматически</b> после оплаты.\n\n"
+                f"👤 @Supermarket_cash_support — поддержка"
+            )
+            builder = InlineKeyboardBuilder()
+            builder.button(text="💳 Оплатить через NicePay", url=pay_url)
+            builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
+            builder.button(text="❌ Отмена", callback_data="catalog")
+            builder.adjust(1)
+            await _nav(callback, text, builder.as_markup())
+        else:
+            req = format_requisites(result)
+            text = (
+                f"💳 <b>Оплата через NicePay</b>\n\n"
+                f"Товар: <b>{p['name']}</b> x{qty}\n"
+                f"Сумма к переводу: <b>{price:,} ₽</b>\n"
+                f"Номер заказа: <b>#{order_id}</b>\n\n"
+                f"{req}\n\n"
+                f"📌 Переведите <b>точную сумму {price:,} ₽</b> по реквизитам.\n"
+                f"✅ Заказ выдастся <b>автоматически</b> после оплаты.\n\n"
+                f"👤 @Supermarket_cash_support — поддержка"
+            )
+            builder = InlineKeyboardBuilder()
+            builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
+            builder.button(text="❌ Отмена", callback_data="catalog")
+            builder.adjust(1)
+            await _nav(callback, text, builder.as_markup())
     else:
         err = result.get("message") or str(result)[:300]
         text = (
-            f"❌ <b>Ошибка создания платежа CrocoPay</b>\n\n"
+            f"❌ <b>Ошибка NicePay</b>\n\n"
             f"Товар: <b>{p['name']}</b> x{qty}\n"
             f"Сумма: <b>{price:,} ₽</b>\n"
             f"Заказ: <b>#{order_id}</b>\n\n"
             f"Ошибка: <code>{err}</code>\n\n"
-            f"Попробуйте позже или свяжитесь с поддержкой @richhelper1"
+            f"Попробуйте позже или пишите @Supermarket_cash_support"
         )
         await _nav(callback, text, _back_to_payment(pid, price))
 
@@ -470,6 +634,33 @@ async def cb_claim_order(callback: CallbackQuery):
     qty = len(tokens)
     token_strs = [m["token"] for m in tokens]
     product_name = order["product_name"]
+    pid = order["product_id"]
+    # мануалы — отдаём реальный PDF из папки manuals/
+    if pid.startswith("manual_"):
+        pdf_path = os.path.join(os.path.dirname(__file__), "manuals", f"{pid}.pdf")
+        if os.path.isfile(pdf_path):
+            # сначала показываем текст
+            text_manual = (
+                f"🎉 <b>Благодарим за покупку!</b>\n\n"
+                f"📦 Заказ <b>#{order_id}</b>\n\n"
+                f"<b>Ваш {product_name}:</b> готов!\n"
+                f"📄 Файл <b>{os.path.basename(pdf_path)}</b> ниже 👇\n\n"
+                f"Сохраните его, автор — Supermarket_cash."
+            )
+            try:
+                await callback.message.edit_text(text_manual)
+            except:
+                pass
+            # отправляем PDF как документ (реальный файл, не фейк-ссылка)
+            try:
+                doc = FSInputFile(pdf_path)
+                await callback.bot.send_document(chat_id=callback.from_user.id, document=doc, caption=f"📚 {product_name}")
+            except Exception as e:
+                logger.warning(f"manual send fail {pid}: {e}")
+                # fallback: показать токен
+                await callback.message.answer(f"<code>{token_strs[0]}</code>")
+            await callback.answer("🎉 Мануал отправлен!", show_alert=True)
+            return
     if qty == 1:
         text = (
             f"🎉 <b>Благодарим за покупку!</b>\n\n"
@@ -487,7 +678,7 @@ async def cb_claim_order(callback: CallbackQuery):
             f"{lines}\n\n"
             f"Сохраните их, они понадобятся для активации товара."
         )
-    is_converter = config.PRODUCTS.get(order["product_id"], {}).get("category") == "dns_converter"
+    is_converter = config.PRODUCTS.get(order["product_id"], {}).get("category") == "market_converter"
     if is_converter:
         builder = InlineKeyboardBuilder()
         builder.button(text="🔄 Применить конвертер к токену", callback_data=f"convert_{order_id}")
@@ -529,11 +720,11 @@ async def cb_pay_wallet(callback: CallbackQuery):
         f"Товар: <b>{p['name']}</b> x{qty}\n"
         f"Сумма: <b>{price:,} ₽</b>\n"
         f"Номер заказа: <b>#{order_id}</b>\n\n"
-        f"📌 <b>Адрес кошелька USDT (TON):</b>\n"
+        f"📌 <b>Адрес кошелька USDT (TRC20):</b>\n"
         f"<code>{CRYPTO_WALLET}</code>\n\n"
         f"После перевода отправьте скриншот оплаты в этот чат.\n"
         f"Администратор проверит и подтвердит заказ.\n\n"
-        f"👤 @richhelper1 — по всем вопросам писать администратору"
+        f"👤 @Supermarket_cash_support — по всем вопросам писать администратору"
     )
     await _nav(callback, text, _back_to_payment(pid, price))
 
@@ -563,38 +754,55 @@ async def cb_pay_stars(callback: CallbackQuery):
 @router.callback_query(F.data.startswith("dep_pay_card_"))
 async def cb_dep_pay_card(callback: CallbackQuery):
     amount = int(callback.data.split("_")[-1])
-    order_id = create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "crocopay")
+    order_id = create_order(callback.from_user.id, "deposit", "Пополнение баланса", amount, "nicepay")
     pending_crypto_order[callback.from_user.id] = order_id
 
-    await callback.answer("⏳ Создаю реквизиты для оплаты...")
-    result = await create_crocopay_invoice(order_id=order_id, amount=amount)
+    await callback.answer("⏳ Создаю платёж NicePay...")
+    result = await create_nicepay_invoice(order_id=order_id, amount=amount, description="Пополнение баланса")
 
-    if result.get("id"):
-        set_order_invoice(order_id, result["id"])
-        req = format_requisites(result)
-        text = (
-            f"💳 <b>Пополнение через CrocoPay</b>\n\n"
-            f"📄 Платёж №<b>{order_id}</b>\n"
-            f"💵 Сумма к переводу: <b>{amount:,} ₽</b>\n\n"
-            f"{req}\n\n"
-            f"📌 Переведите <b>точную сумму {amount:,} ₽</b> по реквизитам выше.\n"
-            f"✅ Баланс пополнится <b>автоматически</b> после оплаты.\n"
-            f"Если не зачислилось — нажмите «🔄 Проверить оплату».\n\n"
-            f"👤 @richhelper1 — по всем вопросам писать администратору"
-        )
-        builder = InlineKeyboardBuilder()
-        builder.button(text="🔄 Проверить оплату", callback_data=f"check_croco_{order_id}")
-        builder.button(text="❌ Отмена", callback_data="deposit")
-        builder.adjust(1)
-        await _nav(callback, text, builder.as_markup())
+    if result.get("id") or result.get("paymentUrl") or result.get("redirect_url") or result.get("url"):
+        inv_id = result.get("id") or result.get("orderId") or str(order_id)
+        set_order_invoice(order_id, str(inv_id))
+        pay_url = result.get("paymentUrl") or result.get("redirect_url") or result.get("url") or result.get("payUrl")
+        if pay_url:
+            text = (
+                f"💳 <b>Пополнение через NicePay</b>\n\n"
+                f"📄 Платёж №<b>{order_id}</b>\n"
+                f"💵 Сумма: <b>{amount:,} ₽</b>\n\n"
+                f"📌 Нажмите кнопку ниже и оплатите.\n"
+                f"✅ Баланс пополнится <b>автоматически</b> после оплаты.\n\n"
+                f"👤 @Supermarket_cash_support — поддержка"
+            )
+            builder = InlineKeyboardBuilder()
+            builder.button(text="💳 Оплатить через NicePay", url=pay_url)
+            builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
+            builder.button(text="❌ Отмена", callback_data="deposit")
+            builder.adjust(1)
+            await _nav(callback, text, builder.as_markup())
+        else:
+            req = format_requisites(result)
+            text = (
+                f"💳 <b>Пополнение через NicePay</b>\n\n"
+                f"📄 Платёж №<b>{order_id}</b>\n"
+                f"💵 Сумма к переводу: <b>{amount:,} ₽</b>\n\n"
+                f"{req}\n\n"
+                f"📌 Переведите <b>точную сумму</b>.\n"
+                f"✅ Баланс пополнится <b>автоматически</b>.\n\n"
+                f"👤 @Supermarket_cash_support — поддержка"
+            )
+            builder = InlineKeyboardBuilder()
+            builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
+            builder.button(text="❌ Отмена", callback_data="deposit")
+            builder.adjust(1)
+            await _nav(callback, text, builder.as_markup())
     else:
         err = result.get("message") or str(result)[:300]
         text = (
-            f"❌ <b>Ошибка CrocoPay</b>\n\n"
+            f"❌ <b>Ошибка NicePay</b>\n\n"
             f"Сумма: <b>{amount:,} ₽</b>\n"
             f"Заказ: <b>#{order_id}</b>\n\n"
             f"Ошибка: <code>{err}</code>\n\n"
-            f"Попробуйте позже или свяжитесь с @richhelper1"
+            f"Попробуйте позже или пишите @Supermarket_cash_support"
         )
         await _nav(callback, text, None)
 
@@ -608,11 +816,11 @@ async def cb_dep_pay_wallet(callback: CallbackQuery):
         f"💎 <b>Оплата криптовалютой (кошелёк)</b>\n\n"
         f"📄 Платёж №<b>{callback.from_user.id}-{amount}</b>\n"
         f"💵 Сумма: <b>{amount:,} ₽</b>\n\n"
-        f"📌 <b>Адрес кошелька USDT (TON):</b>\n"
+        f"📌 <b>Адрес кошелька USDT (TRC20):</b>\n"
         f"<code>{CRYPTO_WALLET}</code>\n\n"
         f"После перевода отправьте скриншот в этот чат.\n"
         f"Администратор проверит и зачислит средства.\n\n"
-        f"👤 @richhelper1 — по всем вопросам писать администратору"
+        f"👤 @Supermarket_cash_support — по всем вопросам писать администратору"
     )
     await _nav(callback, text, None)
 
@@ -632,9 +840,9 @@ async def cb_dep_pay_stars(callback: CallbackQuery):
     await callback.answer()
 
 
-@router.callback_query(F.data.startswith("check_croco_"))
+@router.callback_query(F.data.startswith("check_nicepay_"))
 async def cb_check_croco(callback: CallbackQuery):
-    order_id = int(callback.data[len("check_croco_"):])
+    order_id = int(callback.data[len("check_nicepay_"):])
     order = get_order(order_id)
     if not order:
         await callback.answer("Заказ не найден", show_alert=True)
@@ -686,12 +894,13 @@ async def cb_check_croco(callback: CallbackQuery):
 
     invoice_id = (order.get("invoice_id") or "").strip()
     if not invoice_id:
-        await callback.answer("❌ Счёт не найден. Создайте заказ заново.", show_alert=True)
+        # Express-форма: статуса через API нет, ждём webhook-автовыдачу
+        await callback.answer("⏳ Оплата через форму проверяется автоматически. Подождите 1-2 мин после оплаты.", show_alert=True)
         return
 
-    await callback.answer("⏳ Проверяю оплату в CrocoPay...", show_alert=False)
-    result = await check_crocopay_invoice(invoice_id)
-    if is_crocopay_success(result):
+    await callback.answer("⏳ Проверяю оплату в NicePay...", show_alert=False)
+    result = await check_nicepay_invoice(invoice_id)
+    if is_nicepay_success(result):
         confirm_order(order_id)
         user_id = order["user_id"]
         if order["product_id"] == "deposit":
@@ -700,7 +909,7 @@ async def cb_check_croco(callback: CallbackQuery):
                 f"💰 <b>Баланс пополнен!</b>\n\n"
                 f"📄 Платёж №<b>{order_id}</b>\n"
                 f"💵 Сумма: <b>{order['price']:,} ₽</b>\n\n"
-                f"Оплачено через CrocoPay ✅"
+                f"Оплачено через NicePay ✅"
             )
             try:
                 await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
@@ -742,7 +951,7 @@ async def cb_check_croco(callback: CallbackQuery):
             try:
                 await callback.bot.send_message(
                     adm,
-                    f"✅ CrocoPay (ручная проверка): Заказ #{order_id} оплачен\n"
+                    f"✅ NicePay (ручная проверка): Заказ #{order_id} оплачен\n"
                     f"👤 Пользователь: <code>{user_id}</code>\n"
                     f"🛒 Товар: {order['product_name']}\n"
                     f"💵 Сумма: {order['price']:,} ₽",
@@ -829,28 +1038,20 @@ async def cb_profile(callback: CallbackQuery):
     registered = user["registered_at"][:10] if user else "—"
 
     text = (
-        "👤 <b>Ваш профиль</b>\n\n"
-        "├ <b>Личная информация</b>\n"
-        f"├ Имя: @{callback.from_user.username or 'NOT_FOUND_NICKNAME'}\n"
-        f"├ ID: <code>{user_id}</code>\n"
-        f"└ Дата регистрации в боте: {registered}\n\n"
-        "├ <b>Финансы</b>\n"
-        f"├ Баланс: {user['balance'] if user else 0}₽\n"
-        f"└ Статус: {user['status'] if user else 'Активен'}\n\n"
-        "├ <b>Статистика</b>\n"
-        f"├ Количество заказов: {cnt}\n"
-        f"└ Общая сумма покупок: {total:,} ₽"
+        f"{_ce(E_INFO,'ℹ️')} <b>Твой профиль в Supermarket_cash</b> {_ce(E_SHOP,'🛒')}\n\n"
+        f"{_ce(E_CHECK,'✔️')} <b>Личная информация</b>\n"
+        f"├ { _ce(E_STAR,'⭐')} Имя: @{callback.from_user.username or 'NOT_FOUND_NICKNAME'}\n"
+        f"├ 🆔 ID: <code>{user_id}</code>\n"
+        f"└ 📅 Регистрация: {registered}\n\n"
+        f"{_ce(E_MONEY,'💵')} <b>Финансы</b>\n"
+        f"├ Баланс: <b>{user['balance'] if user else 0}₽</b> {_ce(E_MONEY_FLY,'💸')}\n"
+        f"└ Статус: {user['status'] if user else 'Активен'} {_ce(E_GREEN,'🟢')}\n\n"
+        f"{_ce(E_CHART,'📊')} <b>Статистика</b>\n"
+        f"├ Заказов: <b>{cnt}</b>\n"
+        f"└ Сумма: <b>{total:,} ₽</b> {_ce(E_CHART_UP,'📈')}"
     )
-    if pending:
-        text += "\n\n⏳ <b>Ожидают оплаты:</b>\n"
-        for o in pending[-5:]:
-            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
-    if confirmed:
-        text += "\n\n✅ <b>Последние заказы:</b>\n"
-        for o in confirmed[-5:]:
-            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
     builder = InlineKeyboardBuilder()
-    builder.button(text="🏠 Главное меню", callback_data="main_menu")
+    builder.button(text=f"{_ce(E_CROSS,'🏠')} Главное меню", callback_data="main_menu")
     await _nav(callback, text, builder.as_markup())
 
 
@@ -899,7 +1100,7 @@ async def cb_admin_confirm_photo(callback: CallbackQuery):
             embedded_order_id = None
     if not embedded_order_id:
         orders = get_pending_orders()
-        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "crocopay")]
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "nicepay")]
         if not user_orders:
             user_orders = [o for o in orders if o["user_id"] == user_id]
         if not user_orders:
@@ -956,7 +1157,7 @@ async def cb_admin_reject_photo(callback: CallbackQuery):
             embedded_order_id = None
     if not embedded_order_id:
         orders = get_pending_orders()
-        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "crocopay")]
+        user_orders = [o for o in orders if o["user_id"] == user_id and o["payment_method"] in ("wallet", "nicepay")]
         if not user_orders:
             user_orders = [o for o in orders if o["user_id"] == user_id]
         if not user_orders:
@@ -964,7 +1165,7 @@ async def cb_admin_reject_photo(callback: CallbackQuery):
             return
         target = max(user_orders, key=lambda o: o["id"])
     reject_order(target["id"])
-    msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @richhelper1 по вопросам."
+    msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @Supermarket_cash_support по вопросам."
     try:
         await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
     except:
@@ -1056,7 +1257,7 @@ async def cb_admin_reject(callback: CallbackQuery):
 
 @router.message(F.text == "📁 Каталог товаров")
 async def menu_catalog(message: Message):
-    text = "📁 <b>Каталог товаров</b>\n\nВыбери необходимую категорию товаров:"
+    text = f"{_ce(E_SHOP,'🛒')} <b>Каталог Supermarket_cash</b> {_ce(E_FIRE,'🔥')}\n\n{_ce(E_DIAMOND,'💎')} Выбери отдел:"
     await _send_with_banner(message, "catalog", text, catalog_menu())
 
 
@@ -1072,26 +1273,18 @@ async def menu_profile(message: Message):
     registered = user["registered_at"][:10] if user else "—"
 
     text = (
-        "👤 <b>Ваш профиль</b>\n\n"
-        "├ <b>Личная информация</b>\n"
-        f"├ Имя: @{message.from_user.username or 'NOT_FOUND_NICKNAME'}\n"
-        f"├ ID: <code>{user_id}</code>\n"
-        f"└ Дата регистрации в боте: {registered}\n\n"
-        "├ <b>Финансы</b>\n"
-        f"├ Баланс: {user['balance'] if user else 0}₽\n"
-        f"└ Статус: {user['status'] if user else 'Активен'}\n\n"
-        "├ <b>Статистика</b>\n"
-        f"├ Количество заказов: {cnt}\n"
-        f"└ Общая сумма покупок: {total:,} ₽"
+        f"{_ce(E_INFO,'ℹ️')} <b>Твой профиль в Supermarket_cash</b> {_ce(E_SHOP,'🛒')}\n\n"
+        f"{_ce(E_CHECK,'✔️')} <b>Личная информация</b>\n"
+        f"├ { _ce(E_STAR,'⭐')} Имя: @{message.from_user.username or 'NOT_FOUND_NICKNAME'}\n"
+        f"├ 🆔 ID: <code>{user_id}</code>\n"
+        f"└ 📅 Регистрация: {registered}\n\n"
+        f"{_ce(E_MONEY,'💵')} <b>Финансы</b>\n"
+        f"├ Баланс: <b>{user['balance'] if user else 0}₽</b> {_ce(E_MONEY_FLY,'💸')}\n"
+        f"└ Статус: {user['status'] if user else 'Активен'} {_ce(E_GREEN,'🟢')}\n\n"
+        f"{_ce(E_CHART,'📊')} <b>Статистика</b>\n"
+        f"├ Заказов: <b>{cnt}</b>\n"
+        f"└ Сумма: <b>{total:,} ₽</b> {_ce(E_CHART_UP,'📈')}"
     )
-    if pending:
-        text += "\n\n⏳ <b>Ожидают оплаты:</b>\n"
-        for o in pending[-5:]:
-            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
-    if confirmed:
-        text += "\n\n✅ <b>Последние заказы:</b>\n"
-        for o in confirmed[-5:]:
-            text += f"├ #{o['id']} — {o['product_name']} — {o['price']:,}₽ ({o['created_at'][:10]})\n"
     builder = InlineKeyboardBuilder()
     builder.button(text="🏠 Главное меню", callback_data="main_menu")
     await _send_with_banner(message, "profile", text, builder.as_markup())
@@ -1132,9 +1325,9 @@ async def cb_deposit_back(callback: CallbackQuery):
 @router.message(F.text == "📢 Новостной канал")
 async def menu_news(message: Message):
     builder = InlineKeyboardBuilder()
-    builder.button(text="📢 Подписаться", url="https://t.me/+BqGzk8yKg7RkM2Vi")
+    builder.button(text="📢 Подписаться", url="https://t.me/supermarket_cash_news")
     await message.answer(
-        "📢 <b>Новостной канал RICH MARKET</b>\n\n"
+        "📢 <b>Новостной канал Supermarket_cash</b>\n\n"
         "Подпишись, чтобы быть в курсе новинок и акций!",
         reply_markup=builder.as_markup(),
     )
@@ -1148,16 +1341,16 @@ async def menu_support(message: Message):
         "Нажми на кнопку ниже, чтобы написать администратору."
     )
     builder = InlineKeyboardBuilder()
-    builder.button(text="🆘 Написать поддержке", url="https://t.me/richhelper1")
+    builder.button(text="🆘 Написать поддержке", url="https://t.me/Supermarket_cash_support")
     await _send_with_banner(message, "support", text, builder.as_markup())
 
 
 @router.message(F.text == "ℹ️ Информация")
 async def menu_info(message: Message):
     text = (
-        "👋 <b>Приветствуем в магазине Rich Market!</b>\n\n"
+        "👋 <b>Добро пожаловать в Supermarket_cash!</b>\n\n"
         "🛍️ <b>Кто Мы?</b>\n"
-        "Rich Market — магазин расходников, который занимается продажей "
+        "Supermarket_cash — магазин расходников, который занимается продажей "
         "цифровых товаров в больших количествах.\n\n"
         "💵 <b>Цена.</b>\n"
         "Весь наш товар идет строго от поставщиков со всего мира, "
@@ -1166,7 +1359,7 @@ async def menu_info(message: Message):
         "За это время мы обрели клиентскую базу и базу поставщиков. "
         "Поддержка отвечает за 5 минут — этим славится наш магазин\n\n"
         "📤 <b>Оборот.</b>\n"
-        "За 4 года работы было продано товаров свыше 200.000.000₽"
+        "За время работы продано кэш-боксов на 200.000.000₽+ — чеки на кассе не врут"
     )
     builder = InlineKeyboardBuilder()
     builder.button(text="📄 Политика конфиденциальности", url="https://telegra.ph/Politika-konfidencialnosti-07-06-72")
@@ -1206,7 +1399,10 @@ async def msg_text_handler(message: Message):
         await message.answer(text, reply_markup=bottom_menu())
         return
 
-    if user_id in waiting_deposit:
+    if user_id in waiting_deposit and waiting_deposit.get(user_id) is not True and waiting_deposit.get(user_id) != "BROADCAST_WAIT":
+        # deposit custom handled elsewhere, skip broadcast mode
+        pass
+    if user_id in waiting_deposit and waiting_deposit.get(user_id) == True:
         if not message.text.isdigit():
             await message.answer("❌ Введите число, например: 500")
             return
@@ -1225,6 +1421,9 @@ async def msg_text_handler(message: Message):
         await message.answer(text, reply_markup=deposit_payment_methods(amount))
         return
 
+    pid = waiting_promo.get(user_id)
+    if pid == "SET_CHANNEL":
+        return  # handled by set_channel handler
     pid = waiting_promo.pop(user_id, None)
     if not pid:
         return
@@ -1292,7 +1491,7 @@ async def handle_photo(message: Message):
             )
     if not order_id_str:
         pending = get_pending_orders()
-        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "crocopay")]
+        user_pending = [o for o in pending if o["user_id"] == user_id and o["payment_method"] in ("wallet", "nicepay")]
         if user_pending:
             target_order = max(user_pending, key=lambda o: o["id"])
             order_id_str = f"_{target_order['id']}"
@@ -1352,11 +1551,9 @@ async def cmd_listpromo(message: Message):
     for p in promos:
         left = p["max_activations"] - p["used_count"]
         lines.append(
-            f"<b>{p['code']}</b> — {p['discount_percent']}% | "
-            f"осталось: {left}/{p['max_activations']}"
+            f"<b>{p['code']}</b> — {p['discount_percent']}% | \n"
+            f"осталось: {left}/{p['max_activations']}\n"
         )
-    await message.answer("\n".join(lines))
-
 
 @router.message(Command("delpromo"))
 async def cmd_delpromo(message: Message):
@@ -1408,3 +1605,212 @@ async def cmd_addbalance(message: Message):
         )
     except:
         await message.answer("❌ Ошибка. Формат: /addbalance USER_ID СУММА")
+
+# ── Админ: обязательная подписка ──
+@router.callback_query(F.data == "admin_set_channel")
+async def cb_admin_set_channel(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        return
+    cur = get_required_channel() or "не установлен"
+    await callback.message.edit_text(
+        f"🔒 <b>Обязательная подписка</b>\n\nТекущий канал: <code>{cur}</code>\n\nОтправь @username канала или ID (например @supermarket_cash). Для отключения отправь <code>off</code>",
+        reply_markup=InlineKeyboardBuilder().button(text="❌ Отмена", callback_data="admin_cancel_give").as_markup()
+    )
+    waiting_promo[callback.from_user.id] = "SET_CHANNEL"  # reuse dict for state
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_broadcast")
+async def cb_admin_broadcast(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        return
+    await callback.message.edit_text(
+        "📢 <b>Рассылка</b>\n\nОтправь сообщение (текст/фото/видео) для рассылки всем пользователям.\nДля отмены — /cancel",
+        reply_markup=InlineKeyboardBuilder().button(text="❌ Отмена", callback_data="admin_cancel_give").as_markup()
+    )
+    waiting_deposit[callback.from_user.id] = "BROADCAST_WAIT"  # reuse
+    await callback.answer()
+
+broadcast_state: dict[int, bool] = {}
+
+@router.message(Command("broadcast"))
+async def cmd_broadcast(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    text = message.text.removeprefix("/broadcast").strip()
+    if not text:
+        await message.answer("Использование: /broadcast ТЕКСТ\nИли просто отправь сообщение после нажатия кнопки Рассылка")
+        return
+    users = get_all_users()
+    sent = 0
+    for u in users:
+        try:
+            await message.bot.send_message(u["user_id"], text)
+            sent += 1
+        except:
+            pass
+    await message.answer(f"✅ Рассылка завершена: {sent}/{len(users)}")
+
+# обработка broadcast из состояния ожидания
+@router.message(F.text | F.photo | F.video | F.document, lambda m: m.from_user.id in ADMIN_IDS and waiting_deposit.get(m.from_user.id) == "BROADCAST_WAIT")
+async def handle_admin_broadcast_message(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    # check for channel setting mode
+    if waiting_promo.get(message.from_user.id) == "SET_CHANNEL":
+        txt = message.text.strip() if message.text else ""
+        if txt.lower() == "off":
+            set_required_channel("")
+            waiting_promo.pop(message.from_user.id, None)
+            await message.answer("✅ Обязательная подписка отключена", reply_markup=admin_panel())
+            return
+        if txt and (txt.startswith("@") or txt.lstrip("-").isdigit()):
+            set_required_channel(txt)
+            waiting_promo.pop(message.from_user.id, None)
+            waiting_deposit.pop(message.from_user.id, None)
+            await message.answer(f"✅ Канал установлен: <code>{txt}</code>", reply_markup=admin_panel())
+            return
+        # не канал — тогда считаем что это broadcast текст, но SET_CHANNEL приоритет
+        waiting_promo.pop(message.from_user.id, None)
+
+    # broadcast mode
+    if waiting_deposit.get(message.from_user.id) == "BROADCAST_WAIT":
+        waiting_deposit.pop(message.from_user.id, None)
+        users = get_all_users()
+        if not users:
+            await message.answer("Нет пользователей для рассылки")
+            return
+        await message.answer(f"⏳ Рассылка {len(users)} пользователям...")
+        sent = 0
+        failed = 0
+        for u in users:
+            try:
+                await message.copy_to(chat_id=u["user_id"])
+                sent += 1
+            except Exception as e:
+                failed += 1
+            # антифлуд
+        await message.answer(f"✅ Рассылка завершена\nОтправлено: {sent}\nОшибок: {failed}", reply_markup=admin_panel())
+
+@router.callback_query(F.data == "admin_list")
+async def cb_admin_list(callback: CallbackQuery):
+    if callback.from_user.id not in ADMIN_IDS:
+        return
+    txt = "👑 <b>Админы Supermarket_cash</b>\n\n"
+    for aid in ADMIN_IDS:
+        mark = " 👑 главный" if aid == MAIN_ADMIN else ""
+        txt += f"• <code>{aid}</code>{mark}\n"
+    txt += "\nКоманды:\n/addadmin ID — добавить\n/deladmin ID — удалить (только главный)"
+    builder = InlineKeyboardBuilder()
+    builder.button(text="➕ Добавить", callback_data="admin_add_prompt")
+    builder.button(text="➖ Удалить", callback_data="admin_del_prompt")
+    builder.button(text="⬅️ Назад", callback_data="admin_back")
+    builder.adjust(2)
+    builder.row(InlineKeyboardBuilder().button(text="⬅️ Назад", callback_data="admin_back").as_markup().inline_keyboard[0][0])
+    # simplify
+    b2 = InlineKeyboardBuilder()
+    b2.button(text="⬅️ Назад", callback_data="admin_back")
+    await callback.message.edit_text(txt, reply_markup=b2.as_markup())
+    await callback.answer()
+
+@router.callback_query(F.data == "admin_back")
+async def cb_admin_back(callback: CallbackQuery):
+    await callback.message.edit_text("🔧 Панель администратора", reply_markup=admin_panel())
+    await callback.answer()
+
+@router.message(Command("addadmin"))
+async def cmd_addadmin(message: Message):
+    if message.from_user.id != MAIN_ADMIN:
+        await message.answer("❌ Только главный админ может добавлять админов")
+        return
+    parts = message.text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.answer("Использование: /addadmin USER_ID")
+        return
+    nid = int(parts[1])
+    if nid in ADMIN_IDS:
+        await message.answer("Уже админ")
+        return
+    # динамически добавляем (в памяти до рестарта, + предлагаем в .env)
+    ADMIN_IDS.append(nid)
+    # также обновим .env для сохранения
+    try:
+        import os
+        env_path = os.path.join(os.path.dirname(__file__), ".env")
+        txt = open(env_path, encoding="utf-8").read()
+        if str(nid) not in txt:
+            txt = txt.replace(f"ADMIN_IDS={','.join(map(str, ADMIN_IDS[:-1]))}", f"ADMIN_IDS={','.join(map(str, ADMIN_IDS))}")
+            # fallback if not matched, just append
+            if str(nid) not in txt:
+                txt = txt.replace("ADMIN_IDS=", f"ADMIN_IDS={nid},")
+            open(env_path, "w", encoding="utf-8").write(txt)
+    except Exception as e:
+        logger.warning(f"addadmin env write fail {e}")
+    await message.answer(f"✅ Админ <code>{nid}</code> добавлен", reply_markup=admin_panel())
+
+@router.message(Command("deladmin"))
+async def cmd_deladmin(message: Message):
+    if message.from_user.id != MAIN_ADMIN:
+        await message.answer("❌ Только главный админ может удалять")
+        return
+    parts = message.text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        await message.answer("Использование: /deladmin USER_ID")
+        return
+    nid = int(parts[1])
+    if nid == MAIN_ADMIN:
+        await message.answer("❌ Нельзя удалить главного")
+        return
+    if nid not in ADMIN_IDS:
+        await message.answer("Не админ")
+        return
+    ADMIN_IDS.remove(nid)
+    try:
+        import os
+        env_path = os.path.join(os.path.dirname(__file__), ".env")
+        txt = open(env_path, encoding="utf-8").read()
+        # rewrite ADMIN_IDS line
+        import re
+        txt = re.sub(r"ADMIN_IDS=.*", f"ADMIN_IDS={','.join(map(str, ADMIN_IDS))}", txt)
+        open(env_path, "w", encoding="utf-8").write(txt)
+    except Exception as e:
+        logger.warning(f"deladmin env write fail {e}")
+    await message.answer(f"✅ Админ <code>{nid}</code> удалён", reply_markup=admin_panel())
+
+@router.message(Command("setchannel"))
+async def cmd_setchannel(message: Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    arg = message.text.removeprefix("/setchannel").strip()
+    if not arg:
+        cur = get_required_channel() or "не установлен"
+        await message.answer(f"Текущий канал: <code>{cur}</code>\nИспользование: /setchannel @username или /setchannel off")
+        return
+    if arg.lower() == "off":
+        set_required_channel("")
+        await message.answer("✅ Обязательная подписка отключена")
+    else:
+        set_required_channel(arg)
+        await message.answer(f"✅ Канал установлен: <code>{arg}</code>")
+
+# Перехват SET_CHANNEL через обычный текст (когда админ в режиме ожидания)
+@router.message(F.text, lambda m: m.from_user.id in ADMIN_IDS and waiting_promo.get(m.from_user.id) == "SET_CHANNEL")
+async def handle_set_channel_text(message: Message):
+    txt = message.text.strip()
+    if txt.lower() == "off":
+        set_required_channel("")
+        waiting_promo.pop(message.from_user.id, None)
+        waiting_deposit.pop(message.from_user.id, None)
+        await message.answer("✅ Обязательная подписка отключена", reply_markup=admin_panel())
+        return
+    if txt.startswith("@") or txt.lstrip("-").isdigit() or "t.me" in txt:
+        # extract @username if t.me link
+        if "t.me/" in txt:
+            txt = "@" + txt.split("t.me/")[-1].split("/")[0].split("?")[0]
+            if not txt.startswith("@"):
+                txt = "@"+txt
+        set_required_channel(txt)
+        waiting_promo.pop(message.from_user.id, None)
+        waiting_deposit.pop(message.from_user.id, None)
+        await message.answer(f"✅ Канал установлен: <code>{txt}</code>", reply_markup=admin_panel())
+    else:
+        await message.answer("❌ Отправь @username или off")

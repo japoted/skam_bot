@@ -35,6 +35,8 @@ try:
         CROCOPAY_CURRENCY,
         CROCOPAY_CALLBACK_URL,
         CROCOPAY_PAYMENT_OPTION,
+        CROCOPAY_SUCCESS_URL,
+        CROCOPAY_CANCEL_URL,
     )
 except ImportError:
     CROCOPAY_CLIENT_ID = os.getenv("CROCOPAY_CLIENT_ID", "")
@@ -43,6 +45,8 @@ except ImportError:
     CROCOPAY_CURRENCY = os.getenv("CROCOPAY_CURRENCY", "RUB")
     CROCOPAY_PAYMENT_OPTION = os.getenv("CROCOPAY_PAYMENT_OPTION", "TO_CARD")
     CROCOPAY_CALLBACK_URL = os.getenv("CROCOPAY_CALLBACK_URL", "")
+    CROCOPAY_SUCCESS_URL = os.getenv("CROCOPAY_SUCCESS_URL", "https://t.me/")
+    CROCOPAY_CANCEL_URL = os.getenv("CROCOPAY_CANCEL_URL", "https://t.me/")
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +139,23 @@ async def create_crocopay_invoice(
 
     cur = (currency or CROCOPAY_CURRENCY or "RUB").upper()
     first = (payment_option or CROCOPAY_PAYMENT_OPTION or "TO_CARD").upper()
+
+    # Сначала спрашиваем какие методы реально включены у кассы —
+    # иначе вслепую перебираем 5 вариантов (~18 сек) и всё равно получаем 422.
     options = [first] + [o for o in FALLBACK_OPTIONS if o != first]
+    try:
+        avail = await get_available_methods()
+        if avail.get("status") == "ok":
+            raw_methods = (avail.get("data") or {}).get("methods") or []
+            enabled = [m.get("payment_option") for m in raw_methods if isinstance(m, dict) and str(m.get("currency", "")).upper() == cur and m.get("payment_option")]
+            if enabled:
+                # выбранный метод первым, дальше остальные включённые
+                options = [first] + [o for o in enabled if o != first]
+                logger.info(f"CrocoPay available {cur}: {enabled}")
+            else:
+                return {"status": "error", "message": f"NO_METHODS: для валюты {cur} у кассы нет включённых методов. Обратитесь к менеджеру CrocoPay."}
+    except Exception as e:
+        logger.warning(f"CrocoPay available precheck failed, fallback to blind retry: {e}")
 
     base_cb = CROCOPAY_CALLBACK_URL or ""
     last_err = ""
@@ -185,6 +205,61 @@ async def create_crocopay_invoice(
                 last_err = str(e)
                 continue
     return {"status": "error", "message": last_err or "CrocoPay: нет доступных методов"}
+
+
+async def create_crocopay_express_link(
+    order_id: int | str,
+    amount: int,
+    currency: Optional[str] = None,
+    client_id: Optional[str] = None,
+    secret: Optional[str] = None,
+) -> dict:
+    """
+    Запасной вариант: Express-форма CrocoPay (когда в H2H нет реквизитов).
+    POST /api/v2/initiate-payment form-urlencoded
+      -> {"status":"success","redirect_url":"https://crocopay.tech/restapi/payment?..."}
+    Webhook у Express тот же самый (HMAC), автовыдача работает без изменений.
+    """
+    mid = client_id or CROCOPAY_CLIENT_ID
+    sec = secret or CROCOPAY_CLIENT_SECRET
+    if not mid or not sec:
+        return {"status": "error", "message": "CROCOPAY_CLIENT_ID / SECRET не заданы в .env"}
+    cur = (currency or CROCOPAY_CURRENCY or "RUB").upper()
+    base_cb = CROCOPAY_CALLBACK_URL or ""
+    sep = "&" if "?" in base_cb else "?"
+    callback_url = f"{base_cb}{sep}order_id={order_id}" if base_cb else ""
+    try:
+        from config import CROCOPAY_SUCCESS_URL, CROCOPAY_CANCEL_URL
+    except ImportError:
+        CROCOPAY_SUCCESS_URL = os.getenv("CROCOPAY_SUCCESS_URL", "https://t.me/")
+        CROCOPAY_CANCEL_URL = os.getenv("CROCOPAY_CANCEL_URL", "https://t.me/")
+    form = {
+        "client_id": mid,
+        "client_secret": sec,
+        "amount": str(int(amount)),  # целые рубли
+        "currency": cur,
+        "successUrl": CROCOPAY_SUCCESS_URL or "https://t.me/",
+        "cancelUrl": CROCOPAY_CANCEL_URL or "https://t.me/",
+        "callbackUrl": callback_url,
+    }
+    logger.info(f"CrocoPay express link: order={order_id} amount={amount} {cur}")
+    try:
+        async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=15)) as session:
+            async with session.post(
+                f"{_base_url()}/api/v2/initiate-payment",
+                data=form,
+                headers={"Accept": "application/json"},
+            ) as resp:
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception:
+                    text = await resp.text()
+                    return {"status": "error", "message": f"HTTP {resp.status}: {text[:200]}"}
+                logger.info(f"CrocoPay express response {resp.status}: {data}")
+                return data if isinstance(data, dict) else {"status": "error", "message": str(data)[:300]}
+    except Exception as e:
+        logger.exception(f"CrocoPay express failed: {e}")
+        return {"status": "error", "message": str(e)}
 
 
 async def check_crocopay_invoice(invoice_id: str) -> dict:

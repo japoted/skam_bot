@@ -7,7 +7,55 @@ import config
 from config import CATEGORIES, OFFER_URL
 
 
-NEWS_URL = "https://t.me/+BqGzk8yKg7RkM2Vi"
+NEWS_URL = "https://t.me/supermarket_cash_news"
+
+# Premium animated — NewsEmoji https://t.me/addemoji/NewsEmoji
+CATEGORY_PREMIUM = {
+    "cash_boxes": "5456140674028019486",  # ⚡️
+    "shelf_proxies": "5406683434124859552",  # 🛍
+    "market_certs": "5397782960512444700",  # 📌
+    "cart_filter": "5231012545799666522",  # 🔍
+    "market_converter": "5375338737028841420",  # 🔄
+    "manuals": "5231200819986047254",  # 📊
+    "accounts": "5206607081334906820",  # ✔️
+    "services": "5282843764451195532",  # 🖥
+    "cards": "5233326571099534068",  # 💸
+}
+PRODUCT_PREMIUM = {
+    "turbo_lite": "5406683434124859552",
+    "turbo": "5456140674028019486",
+    "x_turbo": "5424972470023104089",
+    "giga_turbo": "5427168083074628963",
+    "proxy_ipv4": "5251203410396458957",
+    "proxy_ipv6": "5447410659077661506",
+    "proxy_mobile": "5416081784641168838",
+    "manual_p2p_start": "5231200819986047254",
+    "manual_p2p_pro": "5244837092042750681",
+    "manual_airdrop": "5438496463044752972",
+    "manual_tiktok": "5458603043203327669",
+    "manual_cards": "5233326571099534068",
+    "manual_anon": "5296369303661067030",
+    "manual_binance_guide": "5409048419211682843",
+    "manual_bybit_guide": "5402186569006210455",
+    "manual_traffic_fb": "5422439311196834318",
+    "manual_combo_lite": "5461151367559141950",
+    "acc_binance": "5206607081334906820",
+    "acc_bybit": "5397782960512444700",
+    "acc_okx": "5222079954421818267",
+    "sim_rf": "5443038326535759644",
+    "dedik_usa": "5282843764451195532",
+    "antidetect": "5271604874419647061",
+    "vpn_premium": "5334544901428229844",
+    "card_virtual": "5278751923338490157",
+    "selfreg_fb": "5325547803936572038",
+    "wallet_clean": "5290017777174722330",
+    "cert_clean": "5229064374403998351",
+    "cert_express": "5231012545799666522",
+    "cert_guarantee": "5375338737028841420",
+    "cart_filter": "5440660757194744323",
+    "cash_converter": "5210952531676504517",
+}
+
 
 
 def bottom_menu() -> ReplyKeyboardMarkup:
@@ -30,10 +78,13 @@ def main_menu() -> InlineKeyboardMarkup:
 
 def catalog_menu() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    emojis = {"dns_tokens": "🌐", "proxies": "🛡️", "manuals": "📚", "certificates": "🏅", "dns_filter": "🔍", "dns_converter": "🔄", "dns_adapter": "🔌", "filter": "🧹"}
     for key, name in CATEGORIES.items():
-        emoji = emojis.get(key, "📁")
-        builder.button(text=f"{emoji} {name}", callback_data=f"cat_{key}")
+        icon = CATEGORY_PREMIUM.get(key)
+        # name already clean without emoji (config), add icon via premium
+        if icon:
+            builder.row(InlineKeyboardButton(text=name, icon_custom_emoji_id=icon, callback_data=f"cat_{key}"))
+        else:
+            builder.button(text=name, callback_data=f"cat_{key}")
     builder.adjust(2)
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="main_menu"))
     return builder.as_markup()
@@ -41,15 +92,16 @@ def catalog_menu() -> InlineKeyboardMarkup:
 
 def category_products(category_key: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
+    import re
     for pid, p in config.PRODUCTS.items():
-        if p["category"] == category_key:
-            stock = "✅" if p["in_stock"] else "❌"
-            builder.row(
-                InlineKeyboardButton(
-                    text=f"{p['name']} | {p['price']}₽ {stock}",
-                    callback_data=f"product_{pid}",
-                )
-            )
+        if p["category"] == category_key and p["in_stock"]:
+            clean = re.sub(r'^[^\w\u0400-\u04FF]+', '', p['name']).lstrip()
+            icon = PRODUCT_PREMIUM.get(pid)
+            txt = f"{clean} | {p['price']}₽"
+            if icon:
+                builder.row(InlineKeyboardButton(text=txt, icon_custom_emoji_id=icon, callback_data=f"product_{pid}"))
+            else:
+                builder.row(InlineKeyboardButton(text=f"{txt} ✅", callback_data=f"product_{pid}"))
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="catalog"))
     return builder.as_markup()
 
@@ -77,20 +129,20 @@ def payment_methods(product_id: str, price: int | None = None, balance: int = 0)
     p = config.PRODUCTS[product_id]
     final_price = price if price is not None else p["price"]
     builder.row(
-        InlineKeyboardButton(text="💳 Карта / СБП (авто)", callback_data=f"pay_card_{product_id}_{final_price}"),
+        InlineKeyboardButton(text="🟢 Карта / СБП (авто)", callback_data=f"pay_card_{product_id}_{final_price}"),
     )
     builder.row(
-        InlineKeyboardButton(text="💎 Криптовалюта (кошелёк)", callback_data=f"pay_wallet_{product_id}_{final_price}"),
+        InlineKeyboardButton(text="🟡 Криптовалюта TRC20", callback_data=f"pay_wallet_{product_id}_{final_price}"),
     )
     builder.row(
-        InlineKeyboardButton(text="⭐ Звёзды Telegram", callback_data=f"pay_stars_{product_id}_{final_price}"),
+        InlineKeyboardButton(text="🔵 Звёзды Telegram", callback_data=f"pay_stars_{product_id}_{final_price}"),
     )
     if balance >= final_price and balance > 0:
         builder.row(
-            InlineKeyboardButton(text=f"💰 Баланс ({balance}₽)", callback_data=f"pay_balance_{product_id}_{final_price}"),
+            InlineKeyboardButton(text=f"🟣 Баланс ({balance}₽)", callback_data=f"pay_balance_{product_id}_{final_price}"),
         )
     builder.row(
-        InlineKeyboardButton(text="🎟 Промокод", callback_data=f"promo_{product_id}"),
+        InlineKeyboardButton(text="🎁 Промокод", callback_data=f"promo_{product_id}"),
     )
     builder.row(InlineKeyboardButton(text="❌ Отмена", callback_data="catalog"))
     return builder.as_markup()
@@ -114,9 +166,9 @@ def deposit_amounts() -> InlineKeyboardMarkup:
 
 def deposit_payment_methods(amount: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="💳 Карта / СБП (авто)", callback_data=f"dep_pay_card_{amount}"))
-    builder.row(InlineKeyboardButton(text="💎 Криптовалюта (кошелёк)", callback_data=f"dep_pay_wallet_{amount}"))
-    builder.row(InlineKeyboardButton(text="⭐ Звёзды Telegram", callback_data=f"dep_pay_stars_{amount}"))
+    builder.row(InlineKeyboardButton(text="🟢 Карта / СБП (авто)", callback_data=f"dep_pay_card_{amount}"))
+    builder.row(InlineKeyboardButton(text="🟡 Криптовалюта TRC20", callback_data=f"dep_pay_wallet_{amount}"))
+    builder.row(InlineKeyboardButton(text="🔵 Звёзды Telegram", callback_data=f"dep_pay_stars_{amount}"))
     builder.row(InlineKeyboardButton(text="❌ Отмена", callback_data="deposit"))
     return builder.as_markup()
 
@@ -124,10 +176,19 @@ def deposit_payment_methods(amount: int) -> InlineKeyboardMarkup:
 def admin_panel() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
-        InlineKeyboardButton(text="📋 Заявки на оплату", callback_data="admin_orders"),
+        InlineKeyboardButton(text="🟠 Заявки на оплату", callback_data="admin_orders"),
     )
     builder.row(
-        InlineKeyboardButton(text="💰 Выдать баланс", callback_data="admin_give_balance"),
+        InlineKeyboardButton(text="🟢 Выдать баланс", callback_data="admin_give_balance"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="📢 Рассылка", callback_data="admin_broadcast"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="🔒 Обязательная подписка", callback_data="admin_set_channel"),
+    )
+    builder.row(
+        InlineKeyboardButton(text="👑 Админы", callback_data="admin_list"),
     )
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data="main_menu"))
     return builder.as_markup()
