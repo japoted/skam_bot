@@ -5,7 +5,7 @@ import os
 import random
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "supermarket_cash.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "cash_shop.db")
 
 
 def generate_token(length=28) -> str:
@@ -221,7 +221,7 @@ def claim_order(order_id: int) -> list[dict] | None:
                 tokens.append(_gen_service_creds())
             elif product_id.startswith("manual_"):
                 # для мануалов выдаём ссылку-заглушку + токен
-                tokens.append(f"https://supermarket-cash.local/manual/{generate_token(10)} | {_gen_password(6)}")
+                tokens.append(f"https://cash-shop.local/manual/{generate_token(10)} | {_gen_password(6)}")
             else:
                 tokens.append(generate_token())
         tokens_str = ",".join(tokens)

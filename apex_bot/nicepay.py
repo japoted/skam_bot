@@ -1,5 +1,5 @@
 """
-NicePay integration for Supermarket_cash
+NicePay integration for Cash_shop
 Docs: https://nicepay.io/docs/merchant/payment (POST https://nicepay.io/public/api/payment)
       https://nicepay.io/docs/merchant/h2h_oneRequestPayment (POST .../h2hOneRequestPayment)
       https://nicepay.io/docs/merchant/handler (GET callback with hash)
@@ -108,7 +108,7 @@ async def create_nicepay_invoice(
         "customer": cust,
         "amount": amount_minor,
         "currency": cur,
-        "description": (description or f"Order #{order_id} Supermarket_cash")[:150],
+        "description": (description or f"Order #{order_id} Cash_shop")[:150],
     }
     if method:
         payload["method"] = method

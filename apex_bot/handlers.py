@@ -20,7 +20,7 @@ CUSTOM_EMOJI = [
     "5422439311196834318", "5461151367559141950", "5409048419211682843",
 ]
 
-# смысловые алиасы для Supermarket_cash
+# смысловые алиасы для Cash_shop
 E_SHOP = "5406683434124859552"  # 🛍
 E_MONEY = "5409048419211682843"  # 💵
 E_MONEY_FLY = "5233326571099534068"  # 💸
@@ -40,6 +40,22 @@ E_GREEN = "5416081784641168838"  # 🟢
 E_LIGHT = "5422439311196834318"  # 💡
 E_LIGHTNING = "5456140674028019486"  # ⚡️
 E_PARTY = "5461151367559141950"  # 🎉
+
+# lucide premium — https://t.me/addemoji/lucide_profile_mlf1cyyo_by_lucideemojigen_bot
+L_CART = "5229064374403998351"  # BAGS
+L_MONEY = "5409048419211682843"  # MONEY
+L_INFO = "5334544901428229844"  # INFO
+L_NINJA = "5391112412445288650"  # FACE-profile
+L_LINK = "5271604874419647061"  # LINK
+L_BOX = "5231012545799666522"  # LOUPE
+
+# iconse premium — https://t.me/addemoji/iconse_by_e4zybot (3-й набор в боте)
+I_CHECK = "5375433406697983947"  # ✅
+I_DOT = "5375076774088558972"  # 🔵
+I_ZAP = "5375211434198189144"  # ⚡️
+I_MONEY = "5375491530490397684"  # 💸
+I_STAR = "5375386454115504029"  # ⭐️
+L_TIME = "5375541249031818114"  # TIME-iconse
 
 PRODUCT_EMOJI = {
     "turbo_lite": "5406683434124859552",
@@ -254,14 +270,15 @@ async def _send_with_banner(target: Message, banner_key: str, text: str, reply_m
 async def _send_main_menu(target: Message | CallbackQuery):
     user_first = target.from_user.first_name or ""
     text = (
-        f"{_ce(E_PARTY,'🎉')} <b>Привет, {user_first}!</b> {_ce(E_STAR,'⭐')}\n\n"
-        f"{_ce(E_SHOP,'🛒')} <b>Supermarket_cash — первый супермаркет кэша в Telegram</b> {_ce(E_MONEY,'💵')}\n\n"
-        f"{_ce(E_FIRE,'🔥')} <b>Мы уже помогли 5 200+ клиентам заработать</b> — бери ТУРБО-бокс с полки и иди к кассе!\n\n"
-        f"{_ce(E_CHECK,'✔️')} Выдача за 2 минуты • чистые чеки • без холда\n"
-        f"{_ce(E_CHART_UP,'📈')} Оборот 200M+ ₽ • цены от 490₽ • гарант\n"
-        f"{_ce(E_SHIELD,'🛡')} Поддержка {_ce(E_BELL,'🔔')} 24/7 • полки всегда в наличии • {_ce(E_DIAMOND,'💎')} топ-качество\n\n"
-        f"{_ce(E_GREEN,'🟢')} <b>Бери тележку и заглядывай в каталог 👇</b>\n"
-        f"{_ce(E_LIGHT,'💡')} <i>Выбери отдел — забери товар по оптовой цене. Сегодня скидки на ТУРБО!</i>"
+        f"{_ce(E_PARTY,'🎉')} Привет, {user_first}!\n\n"
+        f"{_ce(I_CHECK,'✅')} <b>CASH SHOP — первый супермаркет кэша в Telegram</b>\n\n"
+        "У нас вы найдете множество цифровых товаров!\n"
+        f"{_ce(I_DOT,'🔵')} VPN / PROXY / DNS\n"
+        f"{_ce(I_DOT,'🔵')} Сертификаты / Скрипты\n"
+        f"{_ce(I_DOT,'🔵')} Аккаунты / Сервисы\n"
+        f"{_ce(I_DOT,'🔵')} Схемы / Мануалы\n"
+        f"{_ce(I_DOT,'🔵')} Фильтры / Боксы\n\n"
+        f"Выбирайте каталог и покупайте нужное по лучшим ценам {_ce(I_STAR,'⭐️')}"
     )
     if os.path.isfile(BANNER):
         photo = FSInputFile(BANNER)
@@ -297,7 +314,7 @@ async def cmd_start(message: Message):
                 builder.button(text="📢 Подписаться на канал", url=url)
                 builder.button(text="✅ Проверить подписку", callback_data="check_sub")
                 builder.adjust(1)
-                await message.answer(f"🔒 <b>Подпишись на канал {ch} чтобы пользоваться Supermarket_cash!</b>", reply_markup=builder.as_markup())
+                await message.answer(f"🔒 <b>Подпишись на канал {ch} чтобы пользоваться Cash_shop!</b>", reply_markup=builder.as_markup())
                 return
         except Exception as e:
             # если бот не админ в канале — пропускаем проверку (логируем)
@@ -342,9 +359,7 @@ async def cb_main_menu(callback: CallbackQuery):
 
 @router.callback_query(F.data == "catalog")
 async def cb_catalog(callback: CallbackQuery):
-    # premium list of categories for wow
-    cat_list = "\n".join([f"{_category_premium(k)} {v}" for k,v in config.CATEGORIES.items()])
-    text = f"{_ce(E_SHOP,'🛒')} <b>Каталог Supermarket_cash</b> {_ce(E_FIRE,'🔥')}\n\n{cat_list}\n\n{_ce(E_DIAMOND,'💎')} Выбери отдел:"
+    text = f"{_ce(E_SHOP,'🛒')} <b>Каталог Cash_shop</b> {_ce(E_FIRE,'🔥')}\n\n{_ce(E_DIAMOND,'💎')} Выбери отдел:"
     path = BANNERS.get("catalog")
     if path and os.path.isfile(path):
         await callback.message.delete()
@@ -532,7 +547,7 @@ async def cb_pay_card(callback: CallbackQuery):
                 f"Номер заказа: <b>#{order_id}</b>\n\n"
                 f"📌 Нажмите кнопку ниже и оплатите по СБП/карте.\n"
                 f"✅ Заказ выдастся <b>автоматически</b> после оплаты.\n\n"
-                f"👤 @Supermarket_cash_support — поддержка"
+                f"👤 @cashhelper — поддержка"
             )
             builder = InlineKeyboardBuilder()
             builder.button(text="💳 Оплатить через NicePay", url=pay_url)
@@ -550,7 +565,7 @@ async def cb_pay_card(callback: CallbackQuery):
                 f"{req}\n\n"
                 f"📌 Переведите <b>точную сумму {price:,} ₽</b> по реквизитам.\n"
                 f"✅ Заказ выдастся <b>автоматически</b> после оплаты.\n\n"
-                f"👤 @Supermarket_cash_support — поддержка"
+                f"👤 @cashhelper — поддержка"
             )
             builder = InlineKeyboardBuilder()
             builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
@@ -565,7 +580,7 @@ async def cb_pay_card(callback: CallbackQuery):
             f"Сумма: <b>{price:,} ₽</b>\n"
             f"Заказ: <b>#{order_id}</b>\n\n"
             f"Ошибка: <code>{err}</code>\n\n"
-            f"Попробуйте позже или пишите @Supermarket_cash_support"
+            f"Попробуйте позже или пишите @cashhelper"
         )
         await _nav(callback, text, _back_to_payment(pid, price))
 
@@ -646,7 +661,7 @@ async def cb_claim_order(callback: CallbackQuery):
                 f"📦 Заказ <b>#{order_id}</b>\n\n"
                 f"<b>Ваш {product_name}:</b> готов!\n"
                 f"📄 Файл <b>{os.path.basename(pdf_path)}</b> ниже 👇\n\n"
-                f"Сохраните его, автор — Supermarket_cash."
+                f"Сохраните его, автор — Cash_shop."
             )
             try:
                 await callback.message.edit_text(text_manual)
@@ -725,7 +740,7 @@ async def cb_pay_wallet(callback: CallbackQuery):
         f"<code>{CRYPTO_WALLET}</code>\n\n"
         f"После перевода отправьте скриншот оплаты в этот чат.\n"
         f"Администратор проверит и подтвердит заказ.\n\n"
-        f"👤 @Supermarket_cash_support — по всем вопросам писать администратору"
+        f"👤 @cashhelper — по всем вопросам писать администратору"
     )
     await _nav(callback, text, _back_to_payment(pid, price))
 
@@ -773,7 +788,7 @@ async def cb_dep_pay_card(callback: CallbackQuery):
                 f"💵 Сумма: <b>{amount:,} ₽</b>\n\n"
                 f"📌 Нажмите кнопку ниже и оплатите.\n"
                 f"✅ Баланс пополнится <b>автоматически</b> после оплаты.\n\n"
-                f"👤 @Supermarket_cash_support — поддержка"
+                f"👤 @cashhelper — поддержка"
             )
             builder = InlineKeyboardBuilder()
             builder.button(text="💳 Оплатить через NicePay", url=pay_url)
@@ -790,7 +805,7 @@ async def cb_dep_pay_card(callback: CallbackQuery):
                 f"{req}\n\n"
                 f"📌 Переведите <b>точную сумму</b>.\n"
                 f"✅ Баланс пополнится <b>автоматически</b>.\n\n"
-                f"👤 @Supermarket_cash_support — поддержка"
+                f"👤 @cashhelper — поддержка"
             )
             builder = InlineKeyboardBuilder()
             builder.button(text="🔄 Проверить оплату", callback_data=f"check_nicepay_{order_id}")
@@ -804,7 +819,7 @@ async def cb_dep_pay_card(callback: CallbackQuery):
             f"Сумма: <b>{amount:,} ₽</b>\n"
             f"Заказ: <b>#{order_id}</b>\n\n"
             f"Ошибка: <code>{err}</code>\n\n"
-            f"Попробуйте позже или пишите @Supermarket_cash_support"
+            f"Попробуйте позже или пишите @cashhelper"
         )
         await _nav(callback, text, None)
 
@@ -822,7 +837,7 @@ async def cb_dep_pay_wallet(callback: CallbackQuery):
         f"<code>{CRYPTO_WALLET}</code>\n\n"
         f"После перевода отправьте скриншот в этот чат.\n"
         f"Администратор проверит и зачислит средства.\n\n"
-        f"👤 @Supermarket_cash_support — по всем вопросам писать администратору"
+        f"👤 @cashhelper — по всем вопросам писать администратору"
     )
     await _nav(callback, text, None)
 
@@ -1042,7 +1057,7 @@ async def cb_profile(callback: CallbackQuery):
     registered = user["registered_at"][:10] if user else "—"
 
     text = (
-        f"{_ce(E_INFO,'ℹ️')} <b>Твой профиль в Supermarket_cash</b> {_ce(E_SHOP,'🛒')}\n\n"
+        f"{_ce(E_INFO,'ℹ️')} <b>Твой профиль в Cash_shop</b> {_ce(E_SHOP,'🛒')}\n\n"
         f"{_ce(E_CHECK,'✔️')} <b>Личная информация</b>\n"
         f"├ { _ce(E_STAR,'⭐')} Имя: @{callback.from_user.username or 'NOT_FOUND_NICKNAME'}\n"
         f"├ 🆔 ID: <code>{user_id}</code>\n"
@@ -1169,7 +1184,7 @@ async def cb_admin_reject_photo(callback: CallbackQuery):
             return
         target = max(user_orders, key=lambda o: o["id"])
     reject_order(target["id"])
-    msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @Supermarket_cash_support по вопросам."
+    msg = f"❌ <b>Заказ #{target['id']} отклонён администратором.</b>\n\nСвяжитесь с @cashhelper по вопросам."
     try:
         await callback.bot.send_message(user_id, msg, reply_markup=bottom_menu())
     except:
@@ -1259,13 +1274,13 @@ async def cb_admin_reject(callback: CallbackQuery):
     await _nav(callback, text, None, answer_text="Заказ отклонён", show_alert=True)
 
 
-@router.message(F.text == "📁 Каталог товаров")
+@router.message(F.text == "Каталог товаров")
 async def menu_catalog(message: Message):
-    text = f"{_ce(E_SHOP,'🛒')} <b>Каталог Supermarket_cash</b> {_ce(E_FIRE,'🔥')}\n\n{_ce(E_DIAMOND,'💎')} Выбери отдел:"
+    text = f"{_ce(L_CART,'🛒')} <b>Каталог Cash_shop</b> {_ce(E_FIRE,'🔥')}\n\n{_ce(E_DIAMOND,'💎')} Выбери отдел:"
     await _send_with_banner(message, "catalog", text, catalog_menu())
 
 
-@router.message(F.text == "👤 Профиль")
+@router.message(F.text == "Профиль")
 async def menu_profile(message: Message):
     user_id = message.from_user.id
     user = get_user(user_id)
@@ -1277,7 +1292,7 @@ async def menu_profile(message: Message):
     registered = user["registered_at"][:10] if user else "—"
 
     text = (
-        f"{_ce(E_INFO,'ℹ️')} <b>Твой профиль в Supermarket_cash</b> {_ce(E_SHOP,'🛒')}\n\n"
+        f"{_ce(L_NINJA,'👤')} <b>Твой профиль в Cash_shop</b> {_ce(E_SHOP,'🛒')}\n\n"
         f"{_ce(E_CHECK,'✔️')} <b>Личная информация</b>\n"
         f"├ { _ce(E_STAR,'⭐')} Имя: @{message.from_user.username or 'NOT_FOUND_NICKNAME'}\n"
         f"├ 🆔 ID: <code>{user_id}</code>\n"
@@ -1294,9 +1309,9 @@ async def menu_profile(message: Message):
     await _send_with_banner(message, "profile", text, builder.as_markup())
 
 
-@router.message(F.text == "💰 Пополнить баланс")
+@router.message(F.text == "Пополнить баланс")
 async def menu_deposit(message: Message):
-    text = "💰 <b>Пополнение баланса</b>\n\nВыберите сумму пополнения или введите свою:"
+    text = f"{_ce(L_MONEY,'💵')} <b>Пополнение баланса</b>\n\nВыберите сумму пополнения или введите свою:"
     await _send_with_banner(message, "deposit", text, deposit_amounts())
 
 
@@ -1304,7 +1319,7 @@ async def menu_deposit(message: Message):
 async def cb_deposit_amount(callback: CallbackQuery):
     raw = callback.data[8:]
     if raw == "custom":
-        text = "💰 <b>Пополнение баланса</b>\n\nВведите сумму пополнения цифрами (от 1 до 200 000 ₽):"
+        text = f"{_ce(L_MONEY,'💵')} <b>Пополнение баланса</b>\n\nВведите сумму пополнения цифрами (от 1 до 200 000 ₽):"
         await _nav(callback, text, None)
         waiting_deposit[callback.from_user.id] = True
         return
@@ -1322,51 +1337,54 @@ async def cb_deposit_amount(callback: CallbackQuery):
 
 @router.callback_query(F.data == "deposit")
 async def cb_deposit_back(callback: CallbackQuery):
-    text = "💰 <b>Пополнение баланса</b>\n\nВыберите сумму пополнения или введите свою:"
+    text = f"{_ce(L_MONEY,'💵')} <b>Пополнение баланса</b>\n\nВыберите сумму пополнения или введите свою:"
     await _nav(callback, text, deposit_amounts())
 
 
 @router.message(F.text == "📢 Новостной канал")
 async def menu_news(message: Message):
     builder = InlineKeyboardBuilder()
-    builder.button(text="📢 Подписаться", url="https://t.me/supermarket_cash_news")
+    from aiogram.types import InlineKeyboardButton as _IKB
+    builder.row(_IKB(text="Подписаться", icon_custom_emoji_id="5458603043203327669", url="https://t.me/Cash_shop_channel"))
     await message.answer(
-        "📢 <b>Новостной канал Supermarket_cash</b>\n\n"
+        "📢 <b>Новостной канал Cash_shop</b>\n\n"
         "Подпишись, чтобы быть в курсе новинок и акций!",
         reply_markup=builder.as_markup(),
     )
 
 
-@router.message(F.text == "🆘 Поддержка")
+@router.message(F.text == "Поддержка")
 async def menu_support(message: Message):
     text = (
-        "🆘 <b>Поддержка</b>\n\n"
+        f"{_ce(L_LINK,'🆘')} <b>Поддержка</b>\n\n"
         "Свяжись с нами по любым вопросам.\n"
         "Нажми на кнопку ниже, чтобы написать администратору."
     )
     builder = InlineKeyboardBuilder()
-    builder.button(text="🆘 Написать поддержке", url="https://t.me/Supermarket_cash_support")
+    from aiogram.types import InlineKeyboardButton as _IKB
+    builder.row(_IKB(text="Написать поддержке", icon_custom_emoji_id=L_LINK, url="https://t.me/cashhelper"))
     await _send_with_banner(message, "support", text, builder.as_markup())
 
 
-@router.message(F.text == "ℹ️ Информация")
+@router.message(F.text == "Информация о магазине")
 async def menu_info(message: Message):
     text = (
-        "👋 <b>Добро пожаловать в Supermarket_cash!</b>\n\n"
-        "🛍️ <b>Кто Мы?</b>\n"
-        "Supermarket_cash — магазин расходников, который занимается продажей "
+        f"{_ce(L_INFO,'ℹ️')} <b>Добро пожаловать в Cash_shop!</b>\n\n"
+        f"{_ce(E_SHOP,'🛍️')} <b>Кто Мы?</b>\n"
+        "Cash_shop — магазин расходников, который занимается продажей "
         "цифровых товаров в больших количествах.\n\n"
-        "💵 <b>Цена.</b>\n"
+        f"{_ce(E_MONEY,'💵')} <b>Цена.</b>\n"
         "Весь наш товар идет строго от поставщиков со всего мира, "
         "именно поэтому у нас самые низкие цены, которых нету ни в одном магазине.\n\n"
-        "⌛️ <b>Дата основания:</b> январь 2022 год.\n"
+        f"{_ce(L_TIME,'⌛️')} <b>Дата основания:</b> январь 2022 год.\n"
         "За это время мы обрели клиентскую базу и базу поставщиков. "
-        "Поддержка отвечает за 5 минут — этим славится наш магазин\n\n"
-        "📤 <b>Оборот.</b>\n"
+        f"Поддержка отвечает за 5 минут {_ce(E_BELL,'🔔')} — этим славится наш магазин\n\n"
+        f"{_ce(E_CHART_UP,'📈')} <b>Оборот.</b>\n"
         "За время работы продано кэш-боксов на 200.000.000₽+ — чеки на кассе не врут"
     )
     builder = InlineKeyboardBuilder()
-    builder.button(text="📄 Политика конфиденциальности", url="https://telegra.ph/Politika-konfidencialnosti-07-06-72")
+    from aiogram.types import InlineKeyboardButton as _IKB
+    builder.row(_IKB(text="Политика конфиденциальности", icon_custom_emoji_id=L_INFO, url="https://telegra.ph/Politika-konfidencialnosti-07-06-72"))
     await _send_with_banner(message, "info", text, builder.as_markup())
 
 
@@ -1617,7 +1635,7 @@ async def cb_admin_set_channel(callback: CallbackQuery):
         return
     cur = get_required_channel() or "не установлен"
     await callback.message.edit_text(
-        f"🔒 <b>Обязательная подписка</b>\n\nТекущий канал: <code>{cur}</code>\n\nОтправь @username канала или ID (например @supermarket_cash). Для отключения отправь <code>off</code>",
+        f"🔒 <b>Обязательная подписка</b>\n\nТекущий канал: <code>{cur}</code>\n\nОтправь @username канала или ID (например @cash_shop). Для отключения отправь <code>off</code>",
         reply_markup=InlineKeyboardBuilder().button(text="❌ Отмена", callback_data="admin_cancel_give").as_markup()
     )
     waiting_promo[callback.from_user.id] = "SET_CHANNEL"  # reuse dict for state
@@ -1699,7 +1717,7 @@ async def handle_admin_broadcast_message(message: Message):
 async def cb_admin_list(callback: CallbackQuery):
     if callback.from_user.id not in ADMIN_IDS:
         return
-    txt = "👑 <b>Админы Supermarket_cash</b>\n\n"
+    txt = "👑 <b>Админы Cash_shop</b>\n\n"
     for aid in ADMIN_IDS:
         mark = " 👑 главный" if aid == MAIN_ADMIN else ""
         txt += f"• <code>{aid}</code>{mark}\n"

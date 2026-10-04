@@ -163,7 +163,7 @@ async def start_webhook_server(bot: Bot):
     app["bot"] = bot
     app.router.add_post(NICEPAY_WEBHOOK_PATH, nicepay_webhook_handler)
     app.router.add_get(NICEPAY_WEBHOOK_PATH, nicepay_webhook_handler)
-    app.router.add_get("/", lambda r: web.json_response({"status": "ok", "service": "supermarket_cash nicepay webhook"}))
+    app.router.add_get("/", lambda r: web.json_response({"status": "ok", "service": "cash_shop nicepay webhook"}))
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", NICEPAY_WEBHOOK_PORT)

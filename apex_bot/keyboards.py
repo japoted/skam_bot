@@ -7,7 +7,7 @@ import config
 from config import CATEGORIES, OFFER_URL
 
 
-NEWS_URL = "https://t.me/supermarket_cash_news"
+NEWS_URL = "https://t.me/Cash_shop_channel"
 
 # Premium animated — NewsEmoji https://t.me/addemoji/NewsEmoji
 CATEGORY_PREMIUM = {
@@ -59,20 +59,28 @@ PRODUCT_PREMIUM = {
 
 
 def bottom_menu() -> ReplyKeyboardMarkup:
+    # Нижнее меню как на референсе: контурные иконки + чистый текст
+    # Каталог — 5210997770567062009, Профиль — 5210935566555714476
+    # Баланс — 5208509635882947404
+    # Инфо — 5210889687715059785, Поддержка — 5208651176530185025
     builder = ReplyKeyboardBuilder()
-    builder.button(text="📁 Каталог товаров")
-    builder.button(text="👤 Профиль")
-    builder.button(text="💰 Пополнить баланс")
-    builder.button(text="🆘 Поддержка")
-    builder.button(text="ℹ️ Информация")
-    builder.adjust(2, 2, 1)
+    builder.row(KeyboardButton(text="Каталог товаров", icon_custom_emoji_id="5210997770567062009"))
+    builder.row(
+        KeyboardButton(text="Профиль", icon_custom_emoji_id="5210935566555714476"),
+        KeyboardButton(text="Пополнить баланс", icon_custom_emoji_id="5208509635882947404"),
+    )
+    builder.row(
+        KeyboardButton(text="Информация о магазине", icon_custom_emoji_id="5210889687715059785"),
+        KeyboardButton(text="Поддержка", icon_custom_emoji_id="5208651176530185025"),
+    )
+    builder.adjust(1, 2, 2)
     return builder.as_markup(resize_keyboard=True, input_field_placeholder="Меню")
 
 
 def main_menu() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.row(InlineKeyboardButton(text="📢 Новостной канал", url=NEWS_URL))
-    builder.row(InlineKeyboardButton(text="📄 Оферта", url=OFFER_URL))
+    builder.row(InlineKeyboardButton(text="Новостной канал", icon_custom_emoji_id="5458603043203327669", url=NEWS_URL))
+    builder.row(InlineKeyboardButton(text="Оферта", icon_custom_emoji_id="5211204787990730015", url=OFFER_URL))
     return builder.as_markup()
 
 
